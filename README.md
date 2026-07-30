@@ -2,7 +2,7 @@
 
 > A starter repo and project brief for apprentice teams building an **AI agent** on top of a running RAG service. You **run** a production-grade RAG app (AnythingLLM) as a knowledge service, then **build** a Flask + React agent that uses it as a tool — adding tool use, guardrails, an agent trace, and observability. The skills here (agents + LLM observability) are the dominant AI-engineering hiring trends for 2025/2026.
 
-**Who this is for:** Apprentices who have just finished the Software Engineering program and are about to start the AI Data Science program. This four-week group project is a visible way to show you're integrating AI into your learning, while practicing a professional software development lifecycle (SDLC) and Git workflow.
+**Who this is for:** Apprentices who have just finished the Software Engineering program and are about to start the AI Data Science program or who have SE experience. This four-week group project is a visible way to show you're integrating AI into your learning, while practicing a professional software development lifecycle (SDLC) and Git workflow.
 
 **How to use this repo:** This is a *starter template*. Once your team is formed, create your own copy to work in (see [Set up your team's repo](#set-up-your-teams-repo-do-this-first)) — don't commit to this shared starter. The README is your requirements doc and definition of "done." [`CONTRIBUTING.md`](./CONTRIBUTING.md) is your Git and team workflow. [`docs/anythingllm-setup.md`](./docs/anythingllm-setup.md) tells you how to stand up the RAG service you'll build against.
 
