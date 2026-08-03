@@ -2,6 +2,9 @@ import pytest
 
 from server.app import create_app
 
+# Pre-import tools module to ensure monkeypatch can resolve module-level imports
+import server.tools.search_knowledge  # noqa: F401
+
 
 @pytest.fixture
 def app():
