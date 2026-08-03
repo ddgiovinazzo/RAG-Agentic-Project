@@ -1,7 +1,9 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 from server.config import Config
+from server.models import db
 
 
 def create_app(test_config=None):
@@ -10,6 +12,8 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
     CORS(app)
+    db.init_app(app)
+    Migrate(app, db)
 
     @app.get("/api/health")
     def health():

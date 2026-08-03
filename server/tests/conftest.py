@@ -13,7 +13,11 @@ def app():
         }
     )
     with app.app_context():
+        from server.models import db
+
+        db.create_all()
         yield app
+        db.session.remove()
 
 
 @pytest.fixture
