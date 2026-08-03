@@ -18,6 +18,9 @@ def create_app(test_config=None):
 
     bcrypt.init_app(app)
     app.register_blueprint(auth_bp)
+    from server.routes import api_bp
+
+    app.register_blueprint(api_bp)
 
     @app.get("/api/health")
     def health():
