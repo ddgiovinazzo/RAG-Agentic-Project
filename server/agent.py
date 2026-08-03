@@ -4,7 +4,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from server.llm import generate
-from server.models import Message, PendingAction, Run, RunStep, db
+from server.models import Message, PendingAction, RunStep, db
 from server.observability import record_step
 from server.tools import TOOLS, openai_tool_defs, validate_arguments
 
@@ -120,6 +120,10 @@ def _loop(run, messages, retried):
                 "status": "needs_confirmation",
                 "pending_action": {"id": action.id, "tool": name, "arguments": arguments},
             }
+
+        # Cap check before tool_call to prevent exceeding MAX_AGENT_STEPS
+        if _next_seq(run) > max_steps:
+            return _finish(run, "failed", "I ran out of steps before finishing this task.")
 
         result = record_step(
             run.id,

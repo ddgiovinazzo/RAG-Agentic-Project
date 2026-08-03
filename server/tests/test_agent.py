@@ -101,3 +101,28 @@ def test_confirmation_gated_tool_pauses_run(app, run, monkeypatch):
     assert run.status == "needs_confirmation"
     # only the llm_call is recorded — the tool has NOT run
     assert [s.kind for s in run.steps] == ["llm_call"]
+
+
+def test_cap_check_prevents_tool_call_overflow_with_odd_max_steps(app, run, monkeypatch):
+    from server.agent import run_agent
+    from server.tools import TOOLS
+
+    # Set MAX_AGENT_STEPS to an odd number to test edge case
+    app.config["MAX_AGENT_STEPS"] = 5
+
+    # Generate stub that always returns valid non-gated tool calls
+    monkeypatch.setattr(
+        "server.agent.generate",
+        lambda m, t: {
+            "type": "tool_call",
+            "name": "search_knowledge",
+            "arguments": {"query": "test"},
+            "call_id": "c",
+        },
+    )
+    monkeypatch.setitem(TOOLS["search_knowledge"], "handler", lambda query: {"answer": "a", "sources": []})
+
+    outcome = run_agent(run, "infinite loop test")
+    assert outcome["status"] == "failed"
+    # Must not exceed MAX_AGENT_STEPS (5)
+    assert len(run.steps) <= 5
