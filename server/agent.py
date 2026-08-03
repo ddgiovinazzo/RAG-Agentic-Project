@@ -4,7 +4,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from server.llm import generate
-from server.models import Message, PendingAction, Run, RunStep, db, utcnow
+from server.models import Message, PendingAction, RunStep, db, utcnow
 from server.observability import record_step
 from server.tools import TOOLS, openai_tool_defs, validate_arguments
 
