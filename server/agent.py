@@ -4,7 +4,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from server.llm import generate
-from server.models import Message, PendingAction, RunStep, db
+from server.models import Message, PendingAction, Run, RunStep, db, utcnow
 from server.observability import record_step
 from server.tools import TOOLS, openai_tool_defs, validate_arguments
 
@@ -137,3 +137,47 @@ def _loop(run, messages, retried):
             _assistant_tool_call_message(call_id, name, arguments),
             _tool_result_message(call_id, name, result),
         ]
+
+
+def resume_run(run, approved):
+    """Resume a run paused in needs_confirmation. Caller guarantees that state."""
+    action = PendingAction.query.filter_by(run_id=run.id, status="pending").first()
+    action.status = "approved" if approved else "rejected"
+    action.resolved_at = utcnow()
+
+    llm_steps = [s for s in run.steps if s.kind == "llm_call"]
+    last_llm = llm_steps[-1]
+    call_id = f"resume_{action.id}"
+    messages = list(last_llm.llm_messages) + [
+        _assistant_tool_call_message(call_id, action.tool_name, action.arguments)
+    ]
+
+    run.status = "running"
+    db.session.commit()
+
+    if approved:
+        tool = TOOLS[action.tool_name]
+        result = record_step(
+            run.id,
+            _next_seq(run),
+            "tool_call",
+            lambda t=tool, a=action.arguments: t["handler"](**a),
+            tool_name=action.tool_name,
+            arguments=action.arguments,
+        )
+        messages.append(_tool_result_message(call_id, action.tool_name, result))
+    else:
+        messages.append(
+            _tool_result_message(
+                call_id,
+                action.tool_name,
+                {"error": "The user declined this action. Do not retry it; wrap up politely."},
+            )
+        )
+
+    outcome = _loop(run, messages, retried=False)
+    if not approved and outcome["status"] == "completed":
+        run.status = "declined"
+        db.session.commit()
+        outcome["status"] = "declined"
+    return outcome
