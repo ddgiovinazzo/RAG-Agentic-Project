@@ -36,3 +36,22 @@ def auth_headers(client):
         "/api/auth/login", json={"email": "me@test.com", "password": "password123"}
     ).get_json()["token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def run(app):
+    from server.models import Conversation, Message, Run, User, db
+
+    user = User(email="runner@test.com", password_hash="x")
+    db.session.add(user)
+    db.session.commit()
+    conv = Conversation(user_id=user.id)
+    db.session.add(conv)
+    db.session.commit()
+    msg = Message(conversation_id=conv.id, role="user", content="goal")
+    db.session.add(msg)
+    db.session.commit()
+    r = Run(conversation_id=conv.id, user_message_id=msg.id, model="test-model")
+    db.session.add(r)
+    db.session.commit()
+    return r
