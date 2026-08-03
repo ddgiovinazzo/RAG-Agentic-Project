@@ -14,6 +14,10 @@ def create_app(test_config=None):
     CORS(app)
     db.init_app(app)
     Migrate(app, db)
+    from server.auth import auth_bp, bcrypt
+
+    bcrypt.init_app(app)
+    app.register_blueprint(auth_bp)
 
     @app.get("/api/health")
     def health():
