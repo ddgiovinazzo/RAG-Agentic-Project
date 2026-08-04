@@ -39,6 +39,16 @@ def auth_headers(client):
 
 
 @pytest.fixture
+def admin_headers(client, app):
+    app.config["ADMIN_EMAILS"] = {"admin@test.com"}
+    client.post("/api/auth/register", json={"email": "admin@test.com", "password": "password123"})
+    token = client.post(
+        "/api/auth/login", json={"email": "admin@test.com", "password": "password123"}
+    ).get_json()["token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
 def run(app):
     from server.models import Conversation, Message, Run, User, db
 

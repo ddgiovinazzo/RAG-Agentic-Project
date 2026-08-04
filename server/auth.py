@@ -46,7 +46,13 @@ def login():
         current_app.config["SECRET_KEY"],
         algorithm="HS256",
     )
-    return jsonify({"token": token})
+    return jsonify(
+        {
+            "token": token,
+            "email": user.email,
+            "is_admin": user.email in current_app.config["ADMIN_EMAILS"],
+        }
+    )
 
 
 def require_auth(fn):
@@ -67,6 +73,7 @@ def require_auth(fn):
         if user is None:
             return jsonify({"error": "invalid or expired token"}), 401
         g.user = user
+        g.is_admin = user.email in current_app.config["ADMIN_EMAILS"]
         return fn(*args, **kwargs)
 
     return wrapper

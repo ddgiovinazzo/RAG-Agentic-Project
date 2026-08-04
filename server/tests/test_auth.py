@@ -52,3 +52,17 @@ def test_require_auth(app, client):
     ok = client.get("/api/probe", headers={"Authorization": f"Bearer {token}"})
     assert ok.status_code == 200
     assert ok.get_json()["email"] == "a@b.com"
+
+
+def test_login_reports_admin_flag(app, client):
+    app.config["ADMIN_EMAILS"] = {"boss@test.com"}
+    for email in ("boss@test.com", "pleb@test.com"):
+        client.post("/api/auth/register", json={"email": email, "password": "password123"})
+    boss = client.post(
+        "/api/auth/login", json={"email": "boss@test.com", "password": "password123"}
+    ).get_json()
+    pleb = client.post(
+        "/api/auth/login", json={"email": "pleb@test.com", "password": "password123"}
+    ).get_json()
+    assert boss["is_admin"] is True and boss["email"] == "boss@test.com"
+    assert pleb["is_admin"] is False

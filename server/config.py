@@ -22,3 +22,9 @@ class Config:
     MAX_AGENT_STEPS = int(os.environ.get("MAX_AGENT_STEPS", "6"))
     TOOL_TIMEOUT_SECONDS = int(os.environ.get("TOOL_TIMEOUT_SECONDS", "20"))
     JWT_EXPIRY_HOURS = 24
+
+    ADMIN_EMAILS = {
+        e.strip().lower()
+        for e in os.environ.get("ADMIN_EMAILS", "").split(",")
+        if e.strip()
+    }
