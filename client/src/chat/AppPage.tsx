@@ -5,12 +5,15 @@ import {
   Divider,
   Drawer,
   Snackbar,
+  Tab,
+  Tabs,
   Toolbar,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import AuditPage from "../audit/AuditPage";
 import TracePanel from "../trace/TracePanel";
 import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
 import ChatView from "./ChatView";
@@ -33,6 +36,7 @@ export default function AppPage() {
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
+  const [view, setView] = useState<"chat" | "audit">("chat");
 
   useEffect(() => {
     api
@@ -179,9 +183,19 @@ export default function AppPage() {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6">
             Triage Agent
           </Typography>
+          <Tabs
+            value={view}
+            onChange={(_, v: "chat" | "audit") => setView(v)}
+            textColor="inherit"
+            indicatorColor="secondary"
+            sx={{ flexGrow: 1 }}
+          >
+            <Tab value="chat" label="Chat" />
+            <Tab value="audit" label="Audit" />
+          </Tabs>
           <Typography variant="body2" sx={{ mr: 2 }}>
             {email}
           </Typography>
@@ -190,49 +204,58 @@ export default function AppPage() {
           </Button>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: DRAWER_WIDTH,
-          "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box" },
-        }}
-      >
-        <Toolbar />
-        <ConversationList
-          conversations={conversations}
-          selectedId={selectedId}
-          onSelect={selectConversation}
-          onNew={newConversation}
-        />
-      </Drawer>
-      <Box
-        component="main"
-        sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
-      >
-        <Toolbar />
-        {selectedId === null ? (
-          <Box sx={{ p: 3 }}>
-            <Typography color="text.secondary">
-              Select or create a conversation to start.
-            </Typography>
+      {view === "audit" ? (
+        <Box component="main" sx={{ flexGrow: 1, overflowY: "auto" }}>
+          <Toolbar />
+          <AuditPage />
+        </Box>
+      ) : (
+        <>
+          <Drawer
+            variant="permanent"
+            sx={{
+              width: DRAWER_WIDTH,
+              "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box" },
+            }}
+          >
+            <Toolbar />
+            <ConversationList
+              conversations={conversations}
+              selectedId={selectedId}
+              onSelect={selectConversation}
+              onNew={newConversation}
+            />
+          </Drawer>
+          <Box
+            component="main"
+            sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+          >
+            <Toolbar />
+            {selectedId === null ? (
+              <Box sx={{ p: 3 }}>
+                <Typography color="text.secondary">
+                  Select or create a conversation to start.
+                </Typography>
+              </Box>
+            ) : (
+              <ChatView
+                messages={messages}
+                busy={busy}
+                disabled={busy || awaiting}
+                draft={draft}
+                onDraftChange={setDraft}
+                onSend={send}
+                onOpenRun={openRun}
+              />
+            )}
           </Box>
-        ) : (
-          <ChatView
-            messages={messages}
-            busy={busy}
-            disabled={busy || awaiting}
-            draft={draft}
-            onDraftChange={setDraft}
-            onSend={send}
-            onOpenRun={openRun}
-          />
-        )}
-      </Box>
-      <Divider orientation="vertical" flexItem />
-      <Box sx={{ width: PANEL_WIDTH, flexShrink: 0, display: "flex", flexDirection: "column" }}>
-        <Toolbar />
-        <TracePanel panel={panel} busy={busy} onConfirm={confirm} />
-      </Box>
+          <Divider orientation="vertical" flexItem />
+          <Box sx={{ width: PANEL_WIDTH, flexShrink: 0, display: "flex", flexDirection: "column" }}>
+            <Toolbar />
+            <TracePanel panel={panel} busy={busy} onConfirm={confirm} />
+          </Box>
+        </>
+      )}
       <Snackbar
         open={snack !== null}
         autoHideDuration={5000}
