@@ -86,10 +86,12 @@ def confirm_run(run_id):
     data = request.get_json(silent=True) or {}
     if "approved" not in data:
         return jsonify({"error": "approved (true/false) is required"}), 400
+    if not isinstance(data["approved"], bool):
+        return jsonify({"error": "approved must be a boolean"}), 400
     if run.status != "needs_confirmation":
         return jsonify({"error": f"run is not awaiting confirmation (status: {run.status})"}), 409
 
-    outcome = resume_run(run, bool(data["approved"]))
+    outcome = resume_run(run, data["approved"])
     return jsonify({**outcome, "trace": _serialize_steps(run)})
 
 

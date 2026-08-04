@@ -69,6 +69,19 @@ def test_confirm_route_guards(client, auth_headers, monkeypatch):
     assert resp.status_code == 404
 
 
+def test_confirm_route_rejects_non_boolean_approved(client, auth_headers, monkeypatch):
+    monkeypatch.setattr("server.routes.run_agent", _fake_agent())
+    conv_id = client.post("/api/conversations", json={}, headers=auth_headers).get_json()["id"]
+    run_id = client.post(
+        f"/api/conversations/{conv_id}/messages", json={"content": "x"}, headers=auth_headers
+    ).get_json()["run_id"]
+
+    # approved must be a boolean, not a string
+    resp = client.post(f"/api/runs/{run_id}/confirm", json={"approved": "false"}, headers=auth_headers)
+    assert resp.status_code == 400
+    assert "approved" in resp.get_json()["error"].lower()
+
+
 def test_get_run_observability_view(client, auth_headers, other_headers, monkeypatch):
     monkeypatch.setattr("server.routes.run_agent", _fake_agent())
     conv_id = client.post("/api/conversations", json={}, headers=auth_headers).get_json()["id"]
