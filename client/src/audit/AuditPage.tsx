@@ -1,12 +1,15 @@
 import { Box, Snackbar, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../auth/AuthContext";
 import { errMsg } from "../chat/AppPage";
 import type { Conversation, RunFilters, RunsPage, RunStats } from "../types";
 import ChartsRow from "./ChartsRow";
+import RunsTable from "./RunsTable";
 import StatsCards from "./StatsCards";
 
 export default function AuditPage() {
+  const { isAdmin } = useAuth();
   const [filters, setFilters] = useState<RunFilters>({ page: 1 });
   const [runsPage, setRunsPage] = useState<RunsPage | null>(null);
   const [stats, setStats] = useState<RunStats | null>(null);
@@ -23,11 +26,7 @@ export default function AuditPage() {
     api.getRunStats(filters).then(setStats).catch((e) => setSnack(errMsg(e)));
   }, [filters]);
 
-  void setFilters;
-  void setSelectedRunId;
-  runsPage?.total;
-  conversations.length;
-  selectedRunId;
+  void selectedRunId;
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
@@ -36,7 +35,14 @@ export default function AuditPage() {
       </Typography>
       <StatsCards stats={stats} />
       <ChartsRow stats={stats} />
-      <Box data-testid="table-slot" />
+      <RunsTable
+        page={runsPage}
+        filters={filters}
+        onFiltersChange={setFilters}
+        conversations={conversations}
+        isAdmin={isAdmin}
+        onOpenRun={setSelectedRunId}
+      />
       <Snackbar
         open={snack !== null}
         autoHideDuration={5000}

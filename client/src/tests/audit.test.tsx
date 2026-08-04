@@ -98,3 +98,36 @@ test("audit tab shows chart empty state with no runs", async () => {
   expect(await screen.findByText(/no run data yet/i)).toBeInTheDocument();
   expect(screen.queryByTestId("runs-per-day-chart")).not.toBeInTheDocument();
 });
+
+test("runs table renders rows and drives filters", async () => {
+  const routes = {
+    "GET /api/runs?status=failed&page=1": () =>
+      jsonResponse({ runs: [], total: 0, page: 1, per_page: 20 }),
+    "GET /api/runs/stats?status=failed": () => jsonResponse(EMPTY_STATS),
+  };
+  renderAudit(routes);
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  expect(await screen.findByText("Escalate ticket T-1")).toBeInTheDocument();
+  expect(screen.getByText("5.2s")).toBeInTheDocument();
+
+  // no admin column for regular users
+  expect(screen.queryByText(/user email/i)).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByLabelText(/status filter/i));
+  await userEvent.click(await screen.findByRole("option", { name: /^failed$/i }));
+  expect(await screen.findByText(/no runs match these filters/i)).toBeInTheDocument();
+});
+
+test("admin sees the user column and email filter", async () => {
+  localStorage.setItem("agent_is_admin", "1");
+  renderAudit({
+    "GET /api/runs?page=1": () =>
+      jsonResponse({
+        ...RUNS_PAGE,
+        runs: [{ ...RUNS_PAGE.runs[0], user_email: "someone@test.com" }],
+      }),
+  });
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  expect(await screen.findByText("someone@test.com")).toBeInTheDocument();
+  expect(screen.getByLabelText(/user email/i)).toBeInTheDocument();
+});
