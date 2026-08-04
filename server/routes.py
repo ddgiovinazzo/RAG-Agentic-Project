@@ -52,6 +52,33 @@ def create_conversation():
     return jsonify({"id": conv.id, "title": conv.title}), 201
 
 
+@api_bp.get("/conversations/<int:conv_id>/messages")
+@require_auth
+def get_conversation_messages(conv_id):
+    conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
+    if conv is None:
+        return jsonify({"error": "conversation not found"}), 404
+    messages = Message.query.filter_by(conversation_id=conv.id).order_by(Message.id).all()
+    runs = Run.query.filter_by(conversation_id=conv.id).order_by(Run.id).all()
+    return jsonify(
+        {
+            "messages": [
+                {
+                    "id": m.id,
+                    "role": m.role,
+                    "content": m.content,
+                    "created_at": m.created_at.isoformat(),
+                }
+                for m in messages
+            ],
+            "runs": [
+                {"id": r.id, "user_message_id": r.user_message_id, "status": r.status}
+                for r in runs
+            ],
+        }
+    )
+
+
 @api_bp.post("/conversations/<int:conv_id>/messages")
 @require_auth
 def send_message(conv_id):

@@ -17,6 +17,19 @@ def _fake_agent(outcome_status="completed", answer="done"):
     return fake
 
 
+def _fake_agent_with_message(answer="hello back"):
+    def fake(run, goal):
+        from server.models import Message, db
+
+        db.session.add(
+            Message(conversation_id=run.conversation_id, role="assistant", content=answer)
+        )
+        db.session.commit()
+        return {"run_id": run.id, "status": "completed", "answer": answer}
+
+    return fake
+
+
 def test_conversations_crud_and_isolation(client, auth_headers, other_headers):
     resp = client.post("/api/conversations", json={"title": "Ticket T-1"}, headers=auth_headers)
     assert resp.status_code == 201
@@ -95,3 +108,27 @@ def test_get_run_observability_view(client, auth_headers, other_headers, monkeyp
     assert "steps" in resp.get_json()
 
     assert client.get(f"/api/runs/{run_id}", headers=other_headers).status_code == 404
+
+
+def test_get_conversation_messages_history(client, auth_headers, monkeypatch):
+    monkeypatch.setattr("server.routes.run_agent", _fake_agent_with_message())
+    conv_id = client.post("/api/conversations", json={}, headers=auth_headers).get_json()["id"]
+    run_id = client.post(
+        f"/api/conversations/{conv_id}/messages", json={"content": "hi"}, headers=auth_headers
+    ).get_json()["run_id"]
+
+    resp = client.get(f"/api/conversations/{conv_id}/messages", headers=auth_headers)
+    assert resp.status_code == 200
+    body = resp.get_json()
+    roles = [m["role"] for m in body["messages"]]
+    assert roles == ["user", "assistant"]
+    assert body["messages"][0]["content"] == "hi"
+    assert body["runs"] == [
+        {"id": run_id, "user_message_id": body["messages"][0]["id"], "status": "running"}
+    ]
+
+
+def test_get_conversation_messages_isolated(client, auth_headers, other_headers):
+    conv_id = client.post("/api/conversations", json={}, headers=auth_headers).get_json()["id"]
+    resp = client.get(f"/api/conversations/{conv_id}/messages", headers=other_headers)
+    assert resp.status_code == 404
