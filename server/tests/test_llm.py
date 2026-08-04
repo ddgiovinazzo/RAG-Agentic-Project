@@ -30,7 +30,11 @@ def test_generate_final_answer(app, monkeypatch):
     from server.llm import generate
 
     result = generate([{"role": "user", "content": "hello"}], [])
-    assert result == {"type": "final", "content": "hi there"}
+    assert result == {
+        "type": "final",
+        "content": "hi there",
+        "usage": {"prompt_tokens": None, "completion_tokens": None},
+    }
     assert calls["url"] == "http://localhost:11434/v1/chat/completions"
 
 
@@ -59,6 +63,7 @@ def test_generate_parses_tool_call(app, monkeypatch):
         "name": "search_knowledge",
         "arguments": {"query": "vpn reset"},
         "call_id": "call_1",
+        "usage": {"prompt_tokens": None, "completion_tokens": None},
     }
 
 
@@ -108,3 +113,15 @@ def test_generate_raises_llm_error_on_connection_failure(app, monkeypatch):
 
     with pytest.raises(LLMError):
         generate([], [])
+
+
+def test_generate_parses_usage(app, monkeypatch):
+    payload = {
+        "choices": [{"message": {"content": "hi"}}],
+        "usage": {"prompt_tokens": 150, "completion_tokens": 20},
+    }
+    monkeypatch.setattr("server.llm.requests.post", lambda *a, **k: FakeResponse(payload))
+    from server.llm import generate
+
+    result = generate([], [])
+    assert result["usage"] == {"prompt_tokens": 150, "completion_tokens": 20}

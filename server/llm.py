@@ -32,7 +32,13 @@ def generate(messages, tools):
     except requests.RequestException as exc:
         raise LLMError(f"model call failed: {exc}") from exc
 
-    message = resp.json()["choices"][0]["message"]
+    data = resp.json()
+    message = data["choices"][0]["message"]
+    usage_raw = data.get("usage") or {}
+    usage = {
+        "prompt_tokens": usage_raw.get("prompt_tokens"),
+        "completion_tokens": usage_raw.get("completion_tokens"),
+    }
     tool_calls = message.get("tool_calls") or []
     if tool_calls:
         call = tool_calls[0]
@@ -46,5 +52,6 @@ def generate(messages, tools):
             "name": call["function"]["name"],
             "arguments": arguments,
             "call_id": call.get("id", "call_0"),
+            "usage": usage,
         }
-    return {"type": "final", "content": message.get("content") or ""}
+    return {"type": "final", "content": message.get("content") or "", "usage": usage}

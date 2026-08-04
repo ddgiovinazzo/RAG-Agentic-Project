@@ -58,6 +58,8 @@ class RunStep(db.Model):
     result = db.Column(db.JSON)
     llm_messages = db.Column(db.JSON)
     latency_ms = db.Column(db.Integer)
+    prompt_tokens = db.Column(db.Integer)
+    completion_tokens = db.Column(db.Integer)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
 
 

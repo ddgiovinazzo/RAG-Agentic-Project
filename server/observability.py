@@ -15,6 +15,9 @@ def record_step(run_id, seq, kind, fn, *, tool_name=None, arguments=None, llm_me
     except Exception as exc:  # noqa: BLE001 — every failure must reach the log
         result = {"error": str(exc)}
     latency_ms = int((time.perf_counter() - start) * 1000)
+    usage = {}
+    if isinstance(result, dict) and "usage" in result:
+        usage = result.pop("usage") or {}
     stored = result if isinstance(result, dict) else {"value": result}
     step = RunStep(
         run_id=run_id,
@@ -25,6 +28,8 @@ def record_step(run_id, seq, kind, fn, *, tool_name=None, arguments=None, llm_me
         result=stored,
         llm_messages=llm_messages,
         latency_ms=latency_ms,
+        prompt_tokens=usage.get("prompt_tokens"),
+        completion_tokens=usage.get("completion_tokens"),
     )
     db.session.add(step)
     db.session.commit()

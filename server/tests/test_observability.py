@@ -32,3 +32,24 @@ def test_record_step_captures_exception_as_error(app, run):
     step = RunStep.query.filter_by(run_id=run.id).one()
     assert step.result == {"error": "model down"}
     assert step.llm_messages == [{"role": "user", "content": "x"}]
+
+
+def test_record_step_stores_tokens_and_strips_usage(app, run):
+    from server.models import RunStep
+    from server.observability import record_step
+
+    result = record_step(
+        run.id,
+        1,
+        "llm_call",
+        lambda: {
+            "type": "final",
+            "content": "hi",
+            "usage": {"prompt_tokens": 150, "completion_tokens": 20},
+        },
+    )
+    assert "usage" not in result
+    step = RunStep.query.filter_by(run_id=run.id).one()
+    assert step.prompt_tokens == 150
+    assert step.completion_tokens == 20
+    assert "usage" not in step.result
