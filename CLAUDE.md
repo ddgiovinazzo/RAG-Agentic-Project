@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). **There is no application code yet** — only documentation, sample data, and templates. The `server/` and `client/` directories described below are to be built by the team, following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`.
+A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). The Flask agent backend now exists under `server/` (models, auth, the agent loop, tools, observability, and HTTP routes, with tests in `server/tests`), following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`. The `client/` React frontend is still to be built by the team.
 
 ## Architecture
 
@@ -49,20 +49,24 @@ ollama pull llama3.1:8b       # agent reasoning model (tool calling)
 ollama pull llama3.2:1b       # tiny model for fast local iteration
 
 # Backend (server/)
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=agent -e POSTGRES_DB=agentdb \
+  -v agentdb_data:/var/lib/postgresql/data --name agentdb postgres:16
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-flask run                     # http://localhost:5000
+pip install -r server/requirements.txt
+flask --app server.app db upgrade   # create/update the schema
+flask --app server.app run --debug  # http://localhost:5000
 
 # Frontend (client/)
 npm install
 npm run dev                   # http://localhost:5173
 
-# Tests (once they exist)
-pytest                        # backend — run a single test: pytest server/tests/test_x.py::test_name
+# Tests
+python -m pytest server/tests -v                                                # all backend tests
+python -m pytest server/tests/test_agent.py::test_loop_terminates_at_max_steps -v  # single test
 npm test                      # frontend
 ```
 
-Ports: 3001 = AnythingLLM, 5000 = Flask, 5173 = Vite, 11434 = Ollama.
+Ports: 3001 = AnythingLLM, 5000 = Flask, 5173 = Vite, 5432 = Postgres, 11434 = Ollama.
 
 ## Testing conventions
 

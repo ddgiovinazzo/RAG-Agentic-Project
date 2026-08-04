@@ -128,11 +128,13 @@ ollama pull llama3.2:1b       # tiny model for fast local iteration
 # 3. Configure env (paste your AnythingLLM API key + workspace here)
 cp .env.example .env
 
-# 4. Start the agent backend (terminal 1)
-cd server
+# 4. Start Postgres + the agent backend (terminal 1)
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=agent -e POSTGRES_DB=agentdb \
+  -v agentdb_data:/var/lib/postgresql/data --name agentdb postgres:16
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-flask run                       # http://localhost:5000
+pip install -r server/requirements.txt
+flask --app server.app db upgrade   # create/update the schema
+flask --app server.app run --debug  # http://localhost:5000
 
 # 5. Start the frontend (terminal 2)
 cd client
