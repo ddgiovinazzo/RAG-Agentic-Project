@@ -15,6 +15,7 @@ import TracePanel from "../trace/TracePanel";
 import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
 import ChatView from "./ChatView";
 import ConversationList from "./ConversationList";
+import { pairHistory } from "./history";
 
 const DRAWER_WIDTH = 260;
 const PANEL_WIDTH = 380;
@@ -46,6 +47,10 @@ export default function AppPage() {
     setSelectedId(id);
     setMessages([]);
     setPanel(null);
+    api
+      .getHistory(id)
+      .then((h) => setMessages(pairHistory(h)))
+      .catch((err) => setSnack(errMsg(err)));
   };
 
   const newConversation = async () => {

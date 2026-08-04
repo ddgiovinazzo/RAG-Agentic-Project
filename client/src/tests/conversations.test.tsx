@@ -37,6 +37,7 @@ test("new conversation creates and selects it", async () => {
   stubFetch({
     "GET /api/conversations": () => jsonResponse([]),
     "POST /api/conversations": () => jsonResponse({ id: 5, title: "New conversation" }, 201),
+    "GET /api/conversations/5/messages": () => jsonResponse({ messages: [], runs: [] }),
   });
   renderAuthed();
   await userEvent.click(

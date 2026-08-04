@@ -143,3 +143,18 @@ test("clicking a trace chip loads the run into the panel", async () => {
   await userEvent.click(screen.getByTestId("trace-chip-17"));
   expect(await screen.findByText(/1\.1s total/i)).toBeInTheDocument();
 });
+
+test("selecting a conversation restores its history with trace chips", async () => {
+  await renderAndOpenConversation({
+    "GET /api/conversations/1/messages": () =>
+      jsonResponse({
+        messages: [
+          { id: 1, role: "user", content: "reset vpn?", created_at: "t1" },
+          { id: 2, role: "assistant", content: "In Settings.", created_at: "t2" },
+        ],
+        runs: [{ id: 10, user_message_id: 1, status: "completed" }],
+      }),
+  });
+  expect(await screen.findByText("In Settings.")).toBeInTheDocument();
+  expect(screen.getByTestId("trace-chip-10")).toBeInTheDocument();
+});
