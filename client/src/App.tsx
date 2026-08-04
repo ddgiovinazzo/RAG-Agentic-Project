@@ -1,5 +1,8 @@
 import Typography from "@mui/material/Typography";
+import AuthPage from "./auth/AuthPage";
+import { useAuth } from "./auth/AuthContext";
 
 export default function App() {
-  return <Typography variant="h5">Triage Agent</Typography>;
+  const { authed } = useAuth();
+  return authed ? <Typography>Signed in</Typography> : <AuthPage />;
 }
