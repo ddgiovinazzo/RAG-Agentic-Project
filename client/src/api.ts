@@ -2,7 +2,10 @@ import type {
   Conversation,
   ConversationHistory,
   RunDetail,
+  RunFilters,
   RunOutcome,
+  RunsPage,
+  RunStats,
 } from "./types";
 
 export class ApiError extends Error {
@@ -50,6 +53,18 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return body as T;
 }
 
+function runQuery(filters: RunFilters, includePage: boolean): string {
+  const p = new URLSearchParams();
+  if (filters.status) p.set("status", filters.status);
+  if (filters.conversationId) p.set("conversation_id", String(filters.conversationId));
+  if (filters.dateFrom) p.set("date_from", filters.dateFrom);
+  if (filters.dateTo) p.set("date_to", filters.dateTo);
+  if (filters.userEmail) p.set("user_email", filters.userEmail);
+  if (includePage && filters.page) p.set("page", String(filters.page));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
 export const api = {
   register: (email: string, password: string) =>
     apiFetch<{ id: number; email: string }>("/api/auth/register", {
@@ -57,7 +72,7 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   login: (email: string, password: string) =>
-    apiFetch<{ token: string }>("/api/auth/login", {
+    apiFetch<{ token: string; email?: string; is_admin?: boolean }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
@@ -80,4 +95,8 @@ export const api = {
       body: JSON.stringify({ approved }),
     }),
   getRun: (runId: number) => apiFetch<RunDetail>(`/api/runs/${runId}`),
+  listRuns: (filters: RunFilters) =>
+    apiFetch<RunsPage>(`/api/runs${runQuery(filters, true)}`),
+  getRunStats: (filters: RunFilters) =>
+    apiFetch<RunStats>(`/api/runs/stats${runQuery(filters, false)}`),
 };

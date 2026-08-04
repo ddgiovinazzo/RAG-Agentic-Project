@@ -69,3 +69,18 @@ test("a stored token skips the auth screen", async () => {
   renderApp();
   expect(await screen.findByRole("button", { name: /logout/i })).toBeInTheDocument();
 });
+
+test("login exposes the admin flag", async () => {
+  localStorage.clear();
+  stubFetch({
+    "POST /api/auth/login": () =>
+      jsonResponse({ token: "jwt-123", email: "a@b.com", is_admin: true }),
+    "GET /api/conversations": () => jsonResponse([]),
+  });
+  renderApp();
+  await userEvent.type(screen.getByLabelText(/email/i), "a@b.com");
+  await userEvent.type(screen.getByLabelText(/password/i), "password123");
+  await userEvent.click(screen.getByRole("button", { name: /log in/i }));
+  await screen.findByRole("button", { name: /logout/i });
+  expect(localStorage.getItem("agent_is_admin")).toBe("1");
+});

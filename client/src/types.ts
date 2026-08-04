@@ -72,3 +72,60 @@ export interface PanelState {
   pendingAction?: PendingAction;
   totalLatencyMs?: number | null;
 }
+
+export interface RunFilters {
+  status?: string;
+  conversationId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  userEmail?: string;
+  page?: number;
+}
+
+export interface RunListItem {
+  id: number;
+  status: string;
+  goal: string;
+  conversation_id: number;
+  conversation_title: string;
+  model: string | null;
+  step_count: number;
+  total_latency_ms: number | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  created_at: string;
+  user_email?: string;
+}
+
+export interface RunsPage {
+  runs: RunListItem[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface DayCounts {
+  date: string;
+  completed: number;
+  failed: number;
+  declined: number;
+  needs_confirmation: number;
+}
+
+export interface LatencyBucket {
+  label: string;
+  count: number;
+}
+
+export interface RunStats {
+  total_runs: number;
+  by_status: Record<string, number>;
+  success_rate: number | null;
+  avg_steps: number | null;
+  avg_latency_ms: number | null;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  tool_usage: Record<string, number>;
+  runs_per_day: DayCounts[];
+  latency_buckets: LatencyBucket[];
+}

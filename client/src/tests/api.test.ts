@@ -63,3 +63,24 @@ test("confirmRun posts the approved boolean", async () => {
     approved: false,
   });
 });
+
+test("listRuns builds the query string and omits empty filters", async () => {
+  const fetchMock = stubFetch({
+    "GET /api/runs?status=failed&date_from=2026-08-01&page=2": () =>
+      jsonResponse({ runs: [], total: 0, page: 2, per_page: 20 }),
+  });
+  await api.listRuns({ status: "failed", dateFrom: "2026-08-01", page: 2 });
+  expect(fetchMock).toHaveBeenCalledOnce();
+});
+
+test("getRunStats never sends page", async () => {
+  stubFetch({
+    "GET /api/runs/stats?status=failed": () =>
+      jsonResponse({
+        total_runs: 0, by_status: {}, success_rate: null, avg_steps: null,
+        avg_latency_ms: null, total_prompt_tokens: 0, total_completion_tokens: 0,
+        tool_usage: {}, runs_per_day: [], latency_buckets: [],
+      }),
+  });
+  await api.getRunStats({ status: "failed", page: 3 });
+});
