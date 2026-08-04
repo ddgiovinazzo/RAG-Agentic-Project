@@ -124,3 +124,48 @@ def test_list_runs_filters_and_pagination(client, auth_headers, me):
     assert len(body["runs"]) == 1
     # newest first: page 2 holds the oldest run
     assert body["runs"][0]["created_at"].startswith("2026-08-01")
+
+
+def test_run_stats_aggregates(client, auth_headers, me):
+    _seed_run(me, status="completed", latency=1500, tokens=(100, 10),
+              created_at=datetime(2026, 8, 1, 9, tzinfo=timezone.utc))
+    _seed_run(me, status="completed", latency=3000, tokens=(200, 20), tool="escalate",
+              created_at=datetime(2026, 8, 1, 15, tzinfo=timezone.utc))
+    _seed_run(me, status="failed", latency=16000, tokens=(300, 30),
+              created_at=datetime(2026, 8, 2, 9, tzinfo=timezone.utc))
+    _seed_run(me, status="declined", latency=6000, tokens=(0, 0),
+              created_at=datetime(2026, 8, 2, 10, tzinfo=timezone.utc))
+
+    stats = client.get("/api/runs/stats", headers=auth_headers).get_json()
+    assert stats["total_runs"] == 4
+    assert stats["by_status"] == {"completed": 2, "failed": 1, "declined": 1}
+    assert stats["success_rate"] == pytest.approx(0.5)
+    assert stats["avg_steps"] == pytest.approx(2.0)
+    assert stats["avg_latency_ms"] == pytest.approx((1500 + 3000 + 16000 + 6000) / 4)
+    assert stats["total_prompt_tokens"] == 600
+    assert stats["total_completion_tokens"] == 60
+    assert stats["tool_usage"] == {"search_knowledge": 3, "escalate": 1}
+    assert stats["runs_per_day"] == [
+        {"date": "2026-08-01", "completed": 2, "failed": 0, "declined": 0, "needs_confirmation": 0},
+        {"date": "2026-08-02", "completed": 0, "failed": 1, "declined": 1, "needs_confirmation": 0},
+    ]
+    assert stats["latency_buckets"] == [
+        {"label": "<2s", "count": 1},
+        {"label": "2–5s", "count": 1},
+        {"label": "5–15s", "count": 1},
+        {"label": "15s+", "count": 1},
+    ]
+
+    # filters apply to stats too
+    stats = client.get("/api/runs/stats?status=completed", headers=auth_headers).get_json()
+    assert stats["total_runs"] == 2
+
+
+def test_run_stats_empty(client, auth_headers):
+    stats = client.get("/api/runs/stats", headers=auth_headers).get_json()
+    assert stats["total_runs"] == 0
+    assert stats["success_rate"] is None
+    assert stats["avg_steps"] is None
+    assert stats["avg_latency_ms"] is None
+    assert stats["runs_per_day"] == []
+    assert stats["tool_usage"] == {}

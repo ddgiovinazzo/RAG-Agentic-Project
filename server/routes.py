@@ -70,6 +70,86 @@ def _filtered_runs_query():
     return q
 
 
+LATENCY_BUCKETS = [
+    ("<2s", 0, 2000),
+    ("2–5s", 2000, 5000),
+    ("5–15s", 5000, 15000),
+    ("15s+", 15000, None),
+]
+
+
+@api_bp.get("/runs/stats")
+@require_auth
+def run_stats():
+    rows = _filtered_runs_query().all()
+    runs = [(run.id, run.status, run.created_at, run.total_latency_ms) for run, _, _ in rows]
+    run_ids = [r[0] for r in runs]
+
+    by_status = {}
+    for _, status, _, _ in runs:
+        by_status[status] = by_status.get(status, 0) + 1
+    completed = by_status.get("completed", 0)
+    terminal = completed + by_status.get("failed", 0) + by_status.get("declined", 0)
+    success_rate = (completed / terminal) if terminal else None
+
+    total_steps = 0
+    total_prompt = 0
+    total_completion = 0
+    tool_usage = {}
+    if run_ids:
+        total_steps, total_prompt, total_completion = (
+            db.session.query(
+                func.count(RunStep.id),
+                func.coalesce(func.sum(RunStep.prompt_tokens), 0),
+                func.coalesce(func.sum(RunStep.completion_tokens), 0),
+            )
+            .filter(RunStep.run_id.in_(run_ids))
+            .one()
+        )
+        tool_usage = dict(
+            db.session.query(RunStep.tool_name, func.count(RunStep.id))
+            .filter(
+                RunStep.run_id.in_(run_ids),
+                RunStep.kind == "tool_call",
+                RunStep.tool_name.isnot(None),
+            )
+            .group_by(RunStep.tool_name)
+        )
+
+    per_day = {}
+    for _, status, created_at, _ in runs:
+        day = created_at.date().isoformat()
+        counts = per_day.setdefault(
+            day, {"completed": 0, "failed": 0, "declined": 0, "needs_confirmation": 0}
+        )
+        if status in counts:
+            counts[status] += 1
+    runs_per_day = [
+        {"date": day, **counts} for day, counts in sorted(per_day.items())
+    ]
+
+    latencies = [lat for _, _, _, lat in runs if lat is not None]
+    latency_buckets = []
+    for label, lo, hi in LATENCY_BUCKETS:
+        count = sum(1 for lat in latencies if lat >= lo and (hi is None or lat < hi))
+        latency_buckets.append({"label": label, "count": count})
+
+    return jsonify(
+        {
+            "total_runs": len(runs),
+            "by_status": by_status,
+            "success_rate": success_rate,
+            "avg_steps": (total_steps / len(runs)) if runs else None,
+            "avg_latency_ms": (sum(latencies) / len(latencies)) if latencies else None,
+            "total_prompt_tokens": int(total_prompt),
+            "total_completion_tokens": int(total_completion),
+            "tool_usage": tool_usage,
+            "runs_per_day": runs_per_day,
+            "latency_buckets": latency_buckets,
+        }
+    )
+
+
 @api_bp.get("/runs")
 @require_auth
 def list_runs():
