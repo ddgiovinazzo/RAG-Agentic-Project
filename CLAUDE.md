@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). The Flask agent backend now exists under `server/` (models, auth, the agent loop, tools, observability, and HTTP routes, with tests in `server/tests`), following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`. The `client/` React frontend is still to be built by the team.
+A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). The Flask agent backend exists under `server/` (models, auth, the agent loop, tools, observability, and HTTP routes, with tests in `server/tests`), and the React frontend exists under `client/` (chat UI and agent-trace panel), following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`.
 
 ## Architecture
 
@@ -63,7 +63,8 @@ npm run dev                   # http://localhost:5173
 # Tests
 python -m pytest server/tests -v                                                # all backend tests
 python -m pytest server/tests/test_agent.py::test_loop_terminates_at_max_steps -v  # single test
-npm test                      # frontend
+cd client && npm test -- --run                    # frontend tests (single run)
+cd client && npm test -- --run src/tests/chat.test.tsx  # single frontend test file
 ```
 
 Ports: 3001 = AnythingLLM, 5000 = Flask, 5173 = Vite, 5432 = Postgres, 11434 = Ollama.
