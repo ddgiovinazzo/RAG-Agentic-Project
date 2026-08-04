@@ -2,6 +2,7 @@ import {
   AppBar,
   Box,
   Button,
+  Divider,
   Drawer,
   Snackbar,
   Toolbar,
@@ -10,10 +11,13 @@ import {
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import type { Conversation } from "../types";
+import TracePanel from "../trace/TracePanel";
+import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
+import ChatView from "./ChatView";
 import ConversationList from "./ConversationList";
 
 const DRAWER_WIDTH = 260;
+const PANEL_WIDTH = 380;
 
 export function errMsg(err: unknown): string {
   return err instanceof ApiError ? err.message : "Network error — is the backend running?";
@@ -23,6 +27,10 @@ export default function AppPage() {
   const { email, logout } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,11 +40,118 @@ export default function AppPage() {
       .catch((err) => setSnack(errMsg(err)));
   }, []);
 
+  const awaiting = messages.some((m) => m.awaitingConfirmation);
+
+  const selectConversation = (id: number) => {
+    setSelectedId(id);
+    setMessages([]);
+    setPanel(null);
+  };
+
   const newConversation = async () => {
     try {
       const created = await api.createConversation();
       setConversations((cs) => [...cs, { ...created, created_at: "" }]);
-      setSelectedId(created.id);
+      selectConversation(created.id);
+    } catch (err) {
+      setSnack(errMsg(err));
+    }
+  };
+
+  const applyOutcome = (outcome: RunOutcome) => {
+    if (outcome.status === "needs_confirmation") {
+      setMessages((ms) => [
+        ...ms,
+        {
+          role: "assistant",
+          content: "The agent wants to take an action — review it in the trace panel.",
+          runId: outcome.run_id,
+          awaitingConfirmation: true,
+        },
+      ]);
+    } else {
+      setMessages((ms) => [
+        ...ms,
+        {
+          role: "assistant",
+          content: outcome.answer ?? "",
+          runId: outcome.run_id,
+          stepCount: outcome.trace.length,
+        },
+      ]);
+    }
+    setPanel({
+      runId: outcome.run_id,
+      status: outcome.status,
+      steps: outcome.trace,
+      pendingAction: outcome.pending_action,
+    });
+  };
+
+  const send = async () => {
+    const goal = draft.trim();
+    if (!selectedId || !goal) return;
+    setMessages((ms) => [...ms, { role: "user", content: goal }]);
+    setDraft("");
+    setBusy(true);
+    try {
+      applyOutcome(await api.sendMessage(selectedId, goal));
+    } catch (err) {
+      setSnack(errMsg(err));
+      setDraft(goal);
+      setMessages((ms) => ms.slice(0, -1));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async (approved: boolean) => {
+    if (!panel) return;
+    setBusy(true);
+    try {
+      const outcome = await api.confirmRun(panel.runId, approved);
+      if (outcome.status === "needs_confirmation") {
+        setPanel({
+          runId: outcome.run_id,
+          status: outcome.status,
+          steps: outcome.trace,
+          pendingAction: outcome.pending_action,
+        });
+      } else {
+        setMessages((ms) =>
+          ms.map((m) =>
+            m.runId === outcome.run_id && m.awaitingConfirmation
+              ? {
+                  role: "assistant" as const,
+                  content: outcome.answer ?? "",
+                  runId: outcome.run_id,
+                  stepCount: outcome.trace.length,
+                }
+              : m
+          )
+        );
+        setPanel({
+          runId: outcome.run_id,
+          status: outcome.status,
+          steps: outcome.trace,
+        });
+      }
+    } catch (err) {
+      setSnack(errMsg(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openRun = async (runId: number) => {
+    try {
+      const run = await api.getRun(runId);
+      setPanel({
+        runId: run.id,
+        status: run.status,
+        steps: run.steps,
+        totalLatencyMs: run.total_latency_ms,
+      });
     } catch (err) {
       setSnack(errMsg(err));
     }
@@ -68,19 +183,37 @@ export default function AppPage() {
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={selectConversation}
           onNew={newConversation}
         />
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+      <Box
+        component="main"
+        sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+      >
         <Toolbar />
-        <Box sx={{ p: 3 }}>
-          <Typography color="text.secondary">
-            {selectedId === null
-              ? "Select or create a conversation to start."
-              : `Conversation #${selectedId}`}
-          </Typography>
-        </Box>
+        {selectedId === null ? (
+          <Box sx={{ p: 3 }}>
+            <Typography color="text.secondary">
+              Select or create a conversation to start.
+            </Typography>
+          </Box>
+        ) : (
+          <ChatView
+            messages={messages}
+            busy={busy}
+            disabled={busy || awaiting}
+            draft={draft}
+            onDraftChange={setDraft}
+            onSend={send}
+            onOpenRun={openRun}
+          />
+        )}
+      </Box>
+      <Divider orientation="vertical" flexItem />
+      <Box sx={{ width: PANEL_WIDTH, flexShrink: 0, display: "flex", flexDirection: "column" }}>
+        <Toolbar />
+        <TracePanel panel={panel} busy={busy} onConfirm={confirm} />
       </Box>
       <Snackbar
         open={snack !== null}

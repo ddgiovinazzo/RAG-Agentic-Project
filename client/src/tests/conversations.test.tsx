@@ -42,7 +42,9 @@ test("new conversation creates and selects it", async () => {
   await userEvent.click(
     await screen.findByRole("button", { name: /new conversation/i })
   );
-  expect(await screen.findByText("Conversation #5")).toBeInTheDocument();
+  expect(
+    await screen.findByPlaceholderText(/give the agent a goal/i)
+  ).toBeInTheDocument();
 });
 
 test("logout returns to the auth screen", async () => {
