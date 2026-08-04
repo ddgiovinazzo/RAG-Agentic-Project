@@ -80,3 +80,21 @@ test("chat tab is unaffected and switching back works", async () => {
     await screen.findByText(/select or create a conversation/i)
   ).toBeInTheDocument();
 });
+
+test("audit tab renders both charts when there is data", async () => {
+  renderAudit();
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  expect(await screen.findByTestId("runs-per-day-chart")).toBeInTheDocument();
+  expect(screen.getByTestId("latency-chart")).toBeInTheDocument();
+});
+
+test("audit tab shows chart empty state with no runs", async () => {
+  renderAudit({
+    "GET /api/runs?page=1": () =>
+      jsonResponse({ runs: [], total: 0, page: 1, per_page: 20 }),
+    "GET /api/runs/stats": () => jsonResponse(EMPTY_STATS),
+  });
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  expect(await screen.findByText(/no run data yet/i)).toBeInTheDocument();
+  expect(screen.queryByTestId("runs-per-day-chart")).not.toBeInTheDocument();
+});

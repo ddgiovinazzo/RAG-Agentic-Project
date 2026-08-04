@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { errMsg } from "../chat/AppPage";
 import type { Conversation, RunFilters, RunsPage, RunStats } from "../types";
+import ChartsRow from "./ChartsRow";
 import StatsCards from "./StatsCards";
 
 export default function AuditPage() {
@@ -34,7 +35,7 @@ export default function AuditPage() {
         Run audit
       </Typography>
       <StatsCards stats={stats} />
-      <Box data-testid="charts-slot" />
+      <ChartsRow stats={stats} />
       <Box data-testid="table-slot" />
       <Snackbar
         open={snack !== null}
