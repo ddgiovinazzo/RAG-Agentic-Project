@@ -1,6 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
-import { Box, Button, Drawer, IconButton, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Drawer, IconButton, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import TracePanel from "../trace/TracePanel";
@@ -13,11 +13,16 @@ interface Props {
 
 export default function RunDrawer({ runId, onClose }: Props) {
   const [detail, setDetail] = useState<RunDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setDetail(null);
+    setError(null);
     if (runId != null) {
-      api.getRun(runId).then(setDetail).catch(() => {});
+      api
+        .getRun(runId)
+        .then(setDetail)
+        .catch(() => setError("Couldn't load this run."));
     }
   }, [runId]);
 
@@ -53,21 +58,27 @@ export default function RunDrawer({ runId, onClose }: Props) {
             <CloseIcon />
           </IconButton>
         </Stack>
-        <TracePanel
-          panel={
-            detail
-              ? {
-                  runId: detail.id,
-                  status: detail.status,
-                  steps: detail.steps,
-                  pendingAction: detail.pending_action,
-                  totalLatencyMs: detail.total_latency_ms,
-                }
-              : null
-          }
-          busy={false}
-          onConfirm={() => {}}
-        />
+        {error ? (
+          <Box sx={{ p: 2 }}>
+            <Alert severity="error">{error}</Alert>
+          </Box>
+        ) : (
+          <TracePanel
+            panel={
+              detail
+                ? {
+                    runId: detail.id,
+                    status: detail.status,
+                    steps: detail.steps,
+                    pendingAction: detail.pending_action,
+                    totalLatencyMs: detail.total_latency_ms,
+                  }
+                : null
+            }
+            busy={true}
+            onConfirm={() => {}}
+          />
+        )}
       </Box>
     </Drawer>
   );

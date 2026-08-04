@@ -158,3 +158,29 @@ test("clicking a run opens the drawer with steps and JSON export", async () => {
   await userEvent.click(screen.getByRole("button", { name: /download json/i }));
   expect(createObjectURL).toHaveBeenCalledOnce();
 });
+
+test("drawer shows an error when the run fails to load", async () => {
+  renderAudit({
+    "GET /api/runs/17": () =>
+      jsonResponse({ error: "run not found" }, 404),
+  });
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  await userEvent.click(await screen.findByText("Escalate ticket T-1"));
+  expect(await screen.findByText(/couldn't load this run/i)).toBeInTheDocument();
+});
+
+test("drawer disables confirm buttons for a needs_confirmation run", async () => {
+  renderAudit({
+    "GET /api/runs/17": () =>
+      jsonResponse({
+        id: 17, status: "needs_confirmation", model: "llama3.1:8b",
+        total_latency_ms: 5210, created_at: "2026-08-04T10:00:00",
+        steps: [],
+        pending_action: { id: 1, tool: "escalate", arguments: { ticket_id: "T-1" } },
+      }),
+  });
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  await userEvent.click(await screen.findByText("Escalate ticket T-1"));
+  expect(await screen.findByRole("button", { name: /approve/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /reject/i })).toBeDisabled();
+});

@@ -169,3 +169,22 @@ def test_run_stats_empty(client, auth_headers):
     assert stats["avg_latency_ms"] is None
     assert stats["runs_per_day"] == []
     assert stats["tool_usage"] == {}
+
+
+def test_get_run_admin_can_view_other_users_run(client, admin_headers, me):
+    other = _seed_user("other@test.com")
+    other_run = _seed_run(other, goal="their goal")
+
+    resp = client.get(f"/api/runs/{other_run.id}", headers=admin_headers)
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["id"] == other_run.id
+    assert len(body["steps"]) == 2
+
+
+def test_get_run_non_admin_cannot_view_other_users_run(client, auth_headers, me):
+    other = _seed_user("other@test.com")
+    other_run = _seed_run(other, goal="their goal")
+
+    resp = client.get(f"/api/runs/{other_run.id}", headers=auth_headers)
+    assert resp.status_code == 404

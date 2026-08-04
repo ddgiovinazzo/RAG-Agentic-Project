@@ -297,7 +297,7 @@ def confirm_run(run_id):
 @api_bp.get("/runs/<int:run_id>")
 @require_auth
 def get_run(run_id):
-    run = _owned_run(run_id)
+    run = db.session.get(Run, run_id) if g.is_admin else _owned_run(run_id)
     if run is None:
         return jsonify({"error": "run not found"}), 404
     body = {
