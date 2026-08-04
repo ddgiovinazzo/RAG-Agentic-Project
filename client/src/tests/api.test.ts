@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { ApiError, api, setOnUnauthorized, setToken } from "../api";
+import { api, setOnUnauthorized, setToken } from "../api";
 import { jsonResponse, stubFetch } from "./helpers";
 
 afterEach(() => {
@@ -38,8 +38,8 @@ test("error responses throw ApiError with the server message", async () => {
   await expect(api.login("a@b.com", "wrong")).rejects.toThrowError(
     "invalid email or password"
   );
-  await api.login("a@b.com", "wrong").catch((e: ApiError) => {
-    expect(e.status).toBe(401);
+  await expect(api.login("a@b.com", "wrong")).rejects.toMatchObject({
+    status: 401,
   });
 });
 

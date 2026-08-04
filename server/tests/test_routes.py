@@ -106,8 +106,46 @@ def test_get_run_observability_view(client, auth_headers, other_headers, monkeyp
     assert resp.status_code == 200
     assert resp.get_json()["id"] == run_id
     assert "steps" in resp.get_json()
+    assert resp.get_json().get("pending_action") is None  # no pending action for this run
 
     assert client.get(f"/api/runs/{run_id}", headers=other_headers).status_code == 404
+
+
+def test_get_run_includes_pending_action_when_awaiting_confirmation(
+    client, auth_headers, monkeypatch
+):
+    def fake_agent_pauses(run, goal):
+        from server.models import PendingAction, db
+
+        run.status = "needs_confirmation"
+        pending = PendingAction(
+            run_id=run.id,
+            tool_name="escalate",
+            arguments={"ticket_id": "T-1", "priority": "high", "reason": "outage"},
+        )
+        db.session.add(pending)
+        db.session.commit()
+        return {"run_id": run.id, "status": "needs_confirmation"}
+
+    monkeypatch.setattr("server.routes.run_agent", fake_agent_pauses)
+    conv_id = client.post("/api/conversations", json={}, headers=auth_headers).get_json()["id"]
+    run_id = client.post(
+        f"/api/conversations/{conv_id}/messages",
+        json={"content": "Escalate ticket T-1"},
+        headers=auth_headers,
+    ).get_json()["run_id"]
+
+    resp = client.get(f"/api/runs/{run_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["status"] == "needs_confirmation"
+    assert body["pending_action"]["tool"] == "escalate"
+    assert body["pending_action"]["arguments"] == {
+        "ticket_id": "T-1",
+        "priority": "high",
+        "reason": "outage",
+    }
+    assert isinstance(body["pending_action"]["id"], int)
 
 
 def test_get_conversation_messages_history(client, auth_headers, monkeypatch):

@@ -49,7 +49,14 @@ export default function AppPage() {
     setPanel(null);
     api
       .getHistory(id)
-      .then((h) => setMessages(pairHistory(h)))
+      .then((h) => {
+        const ui = pairHistory(h);
+        setMessages(ui);
+        const paused = ui.find((m) => m.awaitingConfirmation);
+        if (paused?.runId !== undefined) {
+          openRun(paused.runId);
+        }
+      })
       .catch((err) => setSnack(errMsg(err)));
   };
 
@@ -75,6 +82,10 @@ export default function AppPage() {
         },
       ]);
     } else {
+      const totalLatencyMs = outcome.trace.reduce(
+        (sum, s) => sum + (s.latency_ms ?? 0),
+        0
+      );
       setMessages((ms) => [
         ...ms,
         {
@@ -82,6 +93,7 @@ export default function AppPage() {
           content: outcome.answer ?? "",
           runId: outcome.run_id,
           stepCount: outcome.trace.length,
+          totalLatencyMs,
         },
       ]);
     }
@@ -156,6 +168,7 @@ export default function AppPage() {
         status: run.status,
         steps: run.steps,
         totalLatencyMs: run.total_latency_ms,
+        pendingAction: run.pending_action,
       });
     } catch (err) {
       setSnack(errMsg(err));

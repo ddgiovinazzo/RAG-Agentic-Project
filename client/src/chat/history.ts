@@ -10,6 +10,16 @@ export function pairHistory(history: ConversationHistory): UiMessage[] {
     if (m.role === "user") {
       pendingRun = runByUserMessage.get(m.id);
       out.push({ role: "user", content: m.content });
+      if (pendingRun?.status === "needs_confirmation") {
+        out.push({
+          role: "assistant",
+          content:
+            "The agent wants to take an action — review it in the trace panel.",
+          runId: pendingRun.id,
+          awaitingConfirmation: true,
+        });
+        pendingRun = undefined;
+      }
     } else {
       out.push({ role: "assistant", content: m.content, runId: pendingRun?.id });
       pendingRun = undefined;

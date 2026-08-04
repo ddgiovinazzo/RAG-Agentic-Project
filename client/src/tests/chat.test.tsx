@@ -64,7 +64,7 @@ test("sending a goal renders the answer with a trace chip and fills the panel", 
   await userEvent.click(screen.getByRole("button", { name: /send/i }));
 
   expect(await screen.findByText("Reset it in Settings.")).toBeInTheDocument();
-  expect(screen.getByTestId("trace-chip-17")).toHaveTextContent("2 steps");
+  expect(screen.getByTestId("trace-chip-17")).toHaveTextContent("2 steps · 1.1s");
   expect(screen.getByText(/run #17/i)).toBeInTheDocument();
   expect(screen.getByText(/#2 · search_knowledge/i)).toBeInTheDocument();
 });
@@ -142,6 +142,52 @@ test("clicking a trace chip loads the run into the panel", async () => {
   await screen.findByText("Done.");
   await userEvent.click(screen.getByTestId("trace-chip-17"));
   expect(await screen.findByText(/1\.1s total/i)).toBeInTheDocument();
+});
+
+test("reloading a conversation with a paused run restores the pending confirmation", async () => {
+  await renderAndOpenConversation({
+    "GET /api/conversations/1/messages": () =>
+      jsonResponse({
+        messages: [
+          { id: 1, role: "user", content: "Escalate ticket T-1", created_at: "t1" },
+        ],
+        runs: [{ id: 18, user_message_id: 1, status: "needs_confirmation" }],
+      }),
+    "GET /api/runs/18": () =>
+      jsonResponse({
+        id: 18,
+        status: "needs_confirmation",
+        model: "llama3.1:8b",
+        total_latency_ms: null,
+        created_at: "2026-08-03T00:00:00",
+        steps: TRACE.slice(0, 1),
+        pending_action: {
+          id: 3,
+          tool: "escalate",
+          arguments: { ticket_id: "T-1", priority: "high", reason: "outage" },
+        },
+      }),
+    "POST /api/runs/18/confirm": () =>
+      jsonResponse({
+        run_id: 18,
+        status: "completed",
+        answer: "Escalated to on-call.",
+        trace: TRACE,
+      }),
+  });
+
+  expect(
+    await screen.findByText(/waiting for your confirmation/i)
+  ).toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeDisabled();
+  expect(
+    await screen.findByRole("button", { name: /approve/i })
+  ).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /approve/i }));
+  expect(await screen.findByText("Escalated to on-call.")).toBeInTheDocument();
+  expect(screen.queryByText(/waiting for your confirmation/i)).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeEnabled();
 });
 
 test("selecting a conversation restores its history with trace chips", async () => {

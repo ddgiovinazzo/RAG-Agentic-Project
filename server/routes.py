@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from server.agent import resume_run, run_agent
 from server.auth import require_auth
-from server.models import Conversation, Message, Run, RunStep, db
+from server.models import Conversation, Message, PendingAction, Run, RunStep, db
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -128,13 +128,19 @@ def get_run(run_id):
     run = _owned_run(run_id)
     if run is None:
         return jsonify({"error": "run not found"}), 404
-    return jsonify(
-        {
-            "id": run.id,
-            "status": run.status,
-            "model": run.model,
-            "total_latency_ms": run.total_latency_ms,
-            "created_at": run.created_at.isoformat(),
-            "steps": _serialize_steps(run, include_messages=True),
+    body = {
+        "id": run.id,
+        "status": run.status,
+        "model": run.model,
+        "total_latency_ms": run.total_latency_ms,
+        "created_at": run.created_at.isoformat(),
+        "steps": _serialize_steps(run, include_messages=True),
+    }
+    pending = PendingAction.query.filter_by(run_id=run.id, status="pending").first()
+    if pending is not None:
+        body["pending_action"] = {
+            "id": pending.id,
+            "tool": pending.tool_name,
+            "arguments": pending.arguments,
         }
-    )
+    return jsonify(body)

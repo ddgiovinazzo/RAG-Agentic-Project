@@ -42,6 +42,7 @@ export interface RunDetail {
   total_latency_ms: number | null;
   created_at: string;
   steps: TraceStep[];
+  pending_action?: PendingAction;
 }
 
 export interface RunSummary {
