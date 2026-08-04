@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). The Flask agent backend exists under `server/` (models, auth, the agent loop, tools, observability, and HTTP routes, with tests in `server/tests`), and the React frontend exists under `client/` (chat UI and agent-trace panel), following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`.
+A **starter template** for a 4-week apprentice project: build an AI agent (Flask + React) on top of a running RAG service (AnythingLLM). The Flask agent backend exists under `server/` (models, auth, the agent loop, tools, observability, and HTTP routes, with tests in `server/tests`), and the React frontend exists under `client/` (chat UI and agent-trace panel, plus an Audit tab for run exploration with stats/charts and admin inspection of all users' runs via `ADMIN_EMAILS`), following the spec in `README.md` (the requirements doc / definition of done) and the starter backlog in `docs/seed-issues.md`.
 
 ## Architecture
 

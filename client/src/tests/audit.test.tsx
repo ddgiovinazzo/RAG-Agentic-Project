@@ -131,3 +131,30 @@ test("admin sees the user column and email filter", async () => {
   expect(await screen.findByText("someone@test.com")).toBeInTheDocument();
   expect(screen.getByLabelText(/user email/i)).toBeInTheDocument();
 });
+
+test("clicking a run opens the drawer with steps and JSON export", async () => {
+  const createObjectURL = vi.fn(() => "blob:fake");
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL,
+    revokeObjectURL: vi.fn(),
+  });
+  renderAudit({
+    "GET /api/runs/17": () =>
+      jsonResponse({
+        id: 17, status: "completed", model: "llama3.1:8b",
+        total_latency_ms: 5210, created_at: "2026-08-04T10:00:00",
+        steps: [
+          {
+            seq: 1, kind: "tool_call", tool_name: "search_knowledge",
+            arguments: { query: "sla" }, result: { answer: "24h" }, latency_ms: 230,
+          },
+        ],
+      }),
+  });
+  await userEvent.click(await screen.findByRole("tab", { name: /audit/i }));
+  await userEvent.click(await screen.findByText("Escalate ticket T-1"));
+  expect(await screen.findByText(/#1 · search_knowledge/i)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /download json/i }));
+  expect(createObjectURL).toHaveBeenCalledOnce();
+});

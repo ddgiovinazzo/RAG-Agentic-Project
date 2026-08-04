@@ -266,6 +266,8 @@ Agents are multi-step and stochastic, so "it worked once" is not evaluation. The
 - **Use your observability log:** when a task fails, the trace tells you *where* — wrong tool, bad arguments, or a bad final answer.
 - **Re-run after changes:** when you change the prompt, the tool descriptions, or the model, re-run the set and watch success rate and step count move.
 
+The app's **Audit tab** (client) is the built-in run viewer: per-run traces, success rate, latency and token stats — use it when scoring eval runs.
+
 Record every run in `docs/eval.md` so you can show progress over time — that "we changed X and success went from 5/10 to 9/10" story is the best thing you can show in a demo and an interview.
 
 ---

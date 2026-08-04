@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { errMsg } from "../chat/AppPage";
 import type { Conversation, RunFilters, RunsPage, RunStats } from "../types";
 import ChartsRow from "./ChartsRow";
+import RunDrawer from "./RunDrawer";
 import RunsTable from "./RunsTable";
 import StatsCards from "./StatsCards";
 
@@ -26,8 +27,6 @@ export default function AuditPage() {
     api.getRunStats(filters).then(setStats).catch((e) => setSnack(errMsg(e)));
   }, [filters]);
 
-  void selectedRunId;
-
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
       <Typography variant="h5" gutterBottom>
@@ -43,6 +42,7 @@ export default function AuditPage() {
         isAdmin={isAdmin}
         onOpenRun={setSelectedRunId}
       />
+      <RunDrawer runId={selectedRunId} onClose={() => setSelectedRunId(null)} />
       <Snackbar
         open={snack !== null}
         autoHideDuration={5000}
