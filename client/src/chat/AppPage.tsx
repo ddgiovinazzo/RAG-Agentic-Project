@@ -38,7 +38,7 @@ export default function AppPage() {
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
-  const [view, setView] = useState<"chat" | "tickets" | "audit">("tickets");
+  const [view, setView] = useState<"chat" | "tickets" | "audit">("chat");
   const [ticketRefreshVersion, setTicketRefreshVersion] = useState(0);
 
   const checkTicketMutation = (outcome: RunOutcome) => {
