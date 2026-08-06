@@ -179,6 +179,21 @@ export default function AppPage() {
     }
   };
 
+  const deleteConversation = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.deleteConversation(id);
+      setConversations((cs) => cs.filter((c) => c.id !== id));
+      if (selectedId === id) {
+        setSelectedId(null);
+        setMessages([]);
+        setPanel(null);
+      }
+    } catch (err) {
+      setSnack(errMsg(err));
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
@@ -223,6 +238,7 @@ export default function AppPage() {
               conversations={conversations}
               selectedId={selectedId}
               onSelect={selectConversation}
+              onDelete={deleteConversation}
               onNew={newConversation}
             />
           </Drawer>

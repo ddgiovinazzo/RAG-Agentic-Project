@@ -82,6 +82,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(title ? { title } : {}),
     }),
+  deleteConversation: (convId: number) =>
+    apiFetch<{ success: boolean }>(`/api/conversations/${convId}`, {
+      method: "DELETE",
+    }),
   sendMessage: (convId: number, content: string) =>
     apiFetch<RunOutcome>(`/api/conversations/${convId}/messages`, {
       method: "POST",
