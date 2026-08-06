@@ -23,7 +23,9 @@ class Conversation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     title = db.Column(db.String(255), default="New conversation")
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     messages = db.relationship("Message", backref="conversation", order_by="Message.id")
+
 
 
 class Message(db.Model):
@@ -71,3 +73,19 @@ class PendingAction(db.Model):
     arguments = db.Column(db.JSON)
     status = db.Column(db.String(16), nullable=False, default="pending")
     resolved_at = db.Column(db.DateTime(timezone=True))
+
+
+class Ticket(db.Model):
+    __tablename__ = "tickets"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="open")
+    priority = db.Column(db.String(20), nullable=False, default="medium")
+    category = db.Column(db.String(50), nullable=False, default="General")
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = db.relationship("User", backref="tickets")
+

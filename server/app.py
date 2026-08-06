@@ -22,7 +22,23 @@ def create_app(test_config=None):
 
     app.register_blueprint(api_bp)
 
+    with app.app_context():
+        db.create_all()
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            if "conversations" in inspector.get_table_names():
+                columns = [c["name"] for c in inspector.get_columns("conversations")]
+                if "updated_at" not in columns:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE conversations ADD COLUMN updated_at DATETIME"))
+                        conn.commit()
+        except Exception:
+            pass
+
+
     @app.get("/api/health")
+
     def health():
         return {"status": "ok"}
 
