@@ -15,14 +15,9 @@
     "@fontsource/roboto": "^5.1.0",
     "@mui/icons-material": "^6.1.0",
     "@mui/material": "^6.1.0",
-    "approve": "^0.0.12",
-    "esbuild": "^0.21.5",
-    "fsevents": "^2.3.3",
-    "ls": "^1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.10.1",
-    "scripts": "^0.1.0"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.0",
