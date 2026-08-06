@@ -1,5 +1,8 @@
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import {
   Button,
@@ -8,6 +11,7 @@ import {
   ListItemText,
   IconButton,
   Box,
+  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -21,6 +25,7 @@ interface Props {
   selectedId: number | null;
   onSelect: (id: number) => void;
   onDelete: (id: number, e: React.MouseEvent) => void;
+  onRename: (id: number, newTitle: string) => void;
   onNew: () => void;
 }
 
@@ -29,9 +34,12 @@ export default function ConversationList({
   selectedId,
   onSelect,
   onDelete,
+  onRename,
   onNew,
 }: Props) {
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   const handleOpenConfirm = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,36 +57,105 @@ export default function ConversationList({
     setConfirmId(null);
   };
 
+  const startEditing = (c: Conversation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(c.id);
+    setEditTitle(c.title);
+  };
+
+  const cancelEditing = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingId(null);
+    setEditTitle("");
+  };
+
+  const saveEditing = (id: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const trimmed = editTitle.trim();
+    if (trimmed) {
+      onRename(id, trimmed);
+    }
+    setEditingId(null);
+    setEditTitle("");
+  };
+
   return (
     <Box sx={{ p: 1 }}>
       <Button startIcon={<AddIcon />} fullWidth variant="outlined" onClick={onNew}>
         New conversation
       </Button>
       <List dense>
-        {conversations.map((c) => (
-          <ListItemButton
-            key={c.id}
-            selected={c.id === selectedId}
-            onClick={() => onSelect(c.id)}
-            sx={{ pr: 5, position: "relative" }}
-          >
-            <ListItemText primary={c.title} sx={{ overflow: "hidden", textOverflow: "ellipsis" }} />
-            <IconButton
-              size="small"
-              edge="end"
-              aria-label="delete conversation"
-              onClick={(e) => handleOpenConfirm(c.id, e)}
-              sx={{
-                position: "absolute",
-                right: 8,
-                opacity: c.id === selectedId ? 1 : 0.4,
-                "&:hover": { opacity: 1, color: "error.main" },
-              }}
+        {conversations.map((c) => {
+          const isEditing = editingId === c.id;
+          return (
+            <ListItemButton
+              key={c.id}
+              selected={c.id === selectedId}
+              onClick={() => onSelect(c.id)}
+              sx={{ pr: isEditing ? 1 : 8, position: "relative" }}
             >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </ListItemButton>
-        ))}
+              {isEditing ? (
+                <Box
+                  sx={{ display: "flex", alignItems: "center", width: "100%", gap: 0.5 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEditing(c.id);
+                      if (e.key === "Escape") cancelEditing();
+                    }}
+                    autoFocus
+                    variant="outlined"
+                    sx={{ flex: 1, minWidth: 0, "& .MuiInputBase-input": { py: 0.5, px: 1, fontSize: "0.875rem" } }}
+                  />
+                  <IconButton size="small" color="primary" onClick={(e) => saveEditing(c.id, e)}>
+                    <CheckIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={cancelEditing}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <>
+                  <ListItemText
+                    primary={c.title}
+                    sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                  />
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      right: 4,
+                      display: "flex",
+                      alignItems: "center",
+                      opacity: c.id === selectedId ? 1 : 0.4,
+                      "&:hover": { opacity: 1 },
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      aria-label="rename conversation"
+                      onClick={(e) => startEditing(c, e)}
+                    >
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      aria-label="delete conversation"
+                      onClick={(e) => handleOpenConfirm(c.id, e)}
+                      sx={{ "&:hover": { color: "error.main" } }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </>
+              )}
+            </ListItemButton>
+          );
+        })}
       </List>
 
       <Dialog open={confirmId !== null} onClose={handleCloseDialog}>
@@ -98,5 +175,3 @@ export default function ConversationList({
     </Box>
   );
 }
-
-
