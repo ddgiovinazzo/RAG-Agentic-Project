@@ -179,6 +179,17 @@ export default function AppPage() {
     }
   };
 
+  const renameConversation = async (id: number, newTitle: string) => {
+    try {
+      const updated = await api.updateConversation(id, newTitle);
+      setConversations((cs) =>
+        cs.map((c) => (c.id === id ? { ...c, title: updated.title } : c))
+      );
+    } catch (err) {
+      setSnack(errMsg(err));
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
@@ -223,9 +234,11 @@ export default function AppPage() {
               conversations={conversations}
               selectedId={selectedId}
               onSelect={selectConversation}
+              onRename={renameConversation}
               onNew={newConversation}
             />
           </Drawer>
+
           <Box
             component="main"
             sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
