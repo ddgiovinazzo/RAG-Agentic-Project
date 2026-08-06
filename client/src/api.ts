@@ -76,7 +76,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
-  listConversations: () => apiFetch<Conversation[]>("/api/conversations"),
+  listConversations: (q?: string) =>
+    apiFetch<Conversation[]>(
+      q ? `/api/conversations?q=${encodeURIComponent(q)}` : "/api/conversations"
+    ),
+
   createConversation: (title?: string) =>
     apiFetch<{ id: number; title: string }>("/api/conversations", {
       method: "POST",
