@@ -73,7 +73,7 @@ export default function StepItem({ step }: { step: TraceStep }) {
           />
           {step.latency_ms != null && (
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-              {step.latency_ms}ms
+              {step.latency_ms} ms
             </Typography>
           )}
         </Stack>
