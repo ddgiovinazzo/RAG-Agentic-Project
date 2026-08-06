@@ -6,10 +6,12 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Chip,
   Stack,
   Typography,
 } from "@mui/material";
 import type { TraceStep } from "../types";
+import { TOOL_COLOR_KEY } from "../theme";
 
 function Section({ label, value }: { label: string; value: unknown }) {
   return (
@@ -17,7 +19,7 @@ function Section({ label, value }: { label: string; value: unknown }) {
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ textTransform: "uppercase" }}
+        sx={{ textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}
       >
         {label}
       </Typography>
@@ -25,11 +27,13 @@ function Section({ label, value }: { label: string; value: unknown }) {
         component="pre"
         sx={{
           m: 0,
-          p: 1,
-          fontSize: 12,
+          p: 1.5,
+          fontSize: 11,
+          fontFamily: "monospace",
           overflowX: "auto",
-          bgcolor: "action.hover",
-          borderRadius: 1,
+          bgcolor: "#0F172A",
+          color: "#E2E8F0",
+          borderRadius: 1.5,
         }}
       >
         {JSON.stringify(value, null, 2)}
@@ -40,27 +44,41 @@ function Section({ label, value }: { label: string; value: unknown }) {
 
 export default function StepItem({ step }: { step: TraceStep }) {
   const isLlm = step.kind === "llm_call";
+  const toolKey = isLlm ? "model_call" : (step.tool_name ?? "default");
+  const toolBadge = TOOL_COLOR_KEY[toolKey] ?? TOOL_COLOR_KEY.default;
   const title = isLlm ? "model call" : (step.tool_name ?? step.kind);
+
   return (
-    <Accordion disableGutters>
+    <Accordion disableGutters sx={{ mb: 1, borderRadius: 1.5, overflow: "hidden" }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
           {isLlm ? (
-            <PsychologyIcon fontSize="small" color="secondary" />
+            <PsychologyIcon fontSize="small" sx={{ color: toolBadge.color }} />
           ) : (
-            <BuildIcon fontSize="small" color="primary" />
+            <BuildIcon fontSize="small" sx={{ color: toolBadge.color }} />
           )}
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ fontWeight: 600, flexGrow: 1 }}>
             #{step.seq} · {title}
           </Typography>
+          <Chip
+            size="small"
+            label={toolBadge.label}
+            sx={{
+              height: 20,
+              fontSize: "0.65rem",
+              bgcolor: toolBadge.bg,
+              color: toolBadge.color,
+              fontWeight: 700,
+            }}
+          />
           {step.latency_ms != null && (
-            <Typography variant="caption" color="text.secondary">
-              {step.latency_ms} ms
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+              {step.latency_ms}ms
             </Typography>
           )}
         </Stack>
       </AccordionSummary>
-      <AccordionDetails>
+      <AccordionDetails sx={{ pt: 0 }}>
         {step.arguments != null && <Section label="arguments" value={step.arguments} />}
         {step.result != null && <Section label="result" value={step.result} />}
         {step.llm_messages != null && (
@@ -70,3 +88,4 @@ export default function StepItem({ step }: { step: TraceStep }) {
     </Accordion>
   );
 }
+

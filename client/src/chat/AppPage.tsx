@@ -2,6 +2,7 @@ import {
   AppBar,
   Box,
   Button,
+  Chip,
   Divider,
   Drawer,
   Snackbar,
@@ -10,6 +11,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -183,9 +185,23 @@ export default function AppPage() {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6">
-            Triage Agent
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mr: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: "-0.02em" }}>
+              Our Company Name
+            </Typography>
+            <Chip
+              label="Support Triage v1.0"
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: "0.7rem",
+                bgcolor: "rgba(255,255,255,0.12)",
+                color: "#E2E8F0",
+                fontWeight: 600,
+              }}
+            />
+          </Box>
+
           <Tabs
             value={view}
             onChange={(_, v: "chat" | "audit") => setView(v)}
@@ -193,17 +209,28 @@ export default function AppPage() {
             indicatorColor="secondary"
             sx={{ flexGrow: 1 }}
           >
-            <Tab value="chat" label="Chat" />
-            <Tab value="audit" label="Audit" />
+            <Tab value="chat" label="Chat" sx={{ fontWeight: 600 }} />
+            <Tab value="audit" label="Audit" sx={{ fontWeight: 600 }} />
+
           </Tabs>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            {email}
-          </Typography>
-          <Button color="inherit" onClick={logout}>
-            Logout
-          </Button>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body2" sx={{ color: "#E2E8F0", fontWeight: 500 }}>
+              {email}
+            </Typography>
+
+            <Button
+              color="inherit"
+              size="small"
+              variant="outlined"
+              onClick={logout}
+              sx={{ borderColor: "rgba(255,255,255,0.2)" }}
+            >
+              Logout
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
+
       {view === "audit" ? (
         <Box component="main" sx={{ flexGrow: 1, overflowY: "auto" }}>
           <Toolbar />
