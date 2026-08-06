@@ -68,7 +68,7 @@ export default function MessageBubble({ message, onOpenRun }: Props) {
             <Chip
               size="small"
               icon={<HourglassTopIcon />}
-              label="Waiting for confirmation"
+              label="waiting for your confirmation"
               color="warning"
               sx={{ mt: 1.25, fontWeight: 600 }}
             />
