@@ -32,20 +32,25 @@ export default function MessageBubble({ message, onOpenRun }: Props) {
             sx={{ mt: 1 }}
           />
         )}
-        {!isUser && !message.awaitingConfirmation && message.runId !== undefined && (
-          <Chip
-            size="small"
-            icon={<SearchIcon />}
-            data-testid={`trace-chip-${message.runId}`}
-            onClick={() => onOpenRun(message.runId!)}
-            label={`${message.stepCount ?? "?"} steps${
-              message.totalLatencyMs != null
-                ? ` · ${(message.totalLatencyMs / 1000).toFixed(1)}s`
-                : ""
-            }`}
-            sx={{ mt: 1 }}
-          />
-        )}
+        {!isUser &&
+          !message.awaitingConfirmation &&
+          message.runId !== undefined &&
+          message.stepCount != null &&
+          message.stepCount > 0 && (
+            <Chip
+              size="small"
+              icon={<SearchIcon />}
+              data-testid={`trace-chip-${message.runId}`}
+              onClick={() => onOpenRun(message.runId!)}
+              label={`${message.stepCount} steps${
+                message.totalLatencyMs != null
+                  ? ` · ${(message.totalLatencyMs / 1000).toFixed(1)}s`
+                  : ""
+              }`}
+              sx={{ mt: 1, cursor: "pointer" }}
+            />
+          )}
+
       </Paper>
     </Box>
   );

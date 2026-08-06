@@ -4,6 +4,25 @@ export interface Conversation {
   created_at: string;
 }
 
+export interface Ticket {
+  id: number;
+  title: string;
+  description: string;
+  status: "open" | "in_progress" | "resolved" | "closed" | string;
+  priority: "low" | "medium" | "high" | "urgent" | string;
+  category: "IT" | "HR" | "Billing" | "Facilities" | "General" | string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface TicketFilters {
+  status?: string;
+  priority?: string;
+  category?: string;
+  q?: string;
+}
+
+
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
@@ -49,7 +68,10 @@ export interface RunSummary {
   id: number;
   user_message_id: number;
   status: string;
+  step_count?: number;
+  total_latency_ms?: number | null;
 }
+
 
 export interface ConversationHistory {
   messages: ChatMessage[];
