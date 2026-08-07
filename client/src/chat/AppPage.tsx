@@ -116,7 +116,13 @@ export default function AppPage() {
     setDraft("");
     setBusy(true);
     try {
-      applyOutcome(await api.sendMessage(selectedId, goal));
+      const outcome = await api.sendMessage(selectedId, goal);
+      if (outcome.conversation_title) {
+        setConversations((cs) =>
+          cs.map((c) => (c.id === selectedId ? { ...c, title: outcome.conversation_title! } : c))
+        );
+      }
+      applyOutcome(outcome);
     } catch (err) {
       setSnack(errMsg(err));
       setDraft(goal);
@@ -125,6 +131,7 @@ export default function AppPage() {
       setBusy(false);
     }
   };
+
 
   const confirm = async (approved: boolean) => {
     if (!panel) return;
