@@ -38,15 +38,23 @@ export default function AppPage() {
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
   const [view, setView] = useState<"chat" | "audit">("chat");
+  const [searchQuery, setSearchQuery] = useState("");
+
+
+
 
   useEffect(() => {
-    api
-      .listConversations()
-      .then(setConversations)
-      .catch((err) => setSnack(errMsg(err)));
-  }, []);
+    const timer = setTimeout(() => {
+      api
+        .listConversations(searchQuery.trim() || undefined)
+        .then(setConversations)
+        .catch((err) => setSnack(errMsg(err)));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const awaiting = messages.some((m) => m.awaitingConfirmation);
+
 
   const selectConversation = (id: number) => {
     setSelectedId(id);
@@ -283,11 +291,14 @@ export default function AppPage() {
             <ConversationList
               conversations={conversations}
               selectedId={selectedId}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
               onSelect={selectConversation}
               onDelete={deleteConversation}
               onRename={renameConversation}
               onNew={newConversation}
             />
+
           </Drawer>
 
           <Box
