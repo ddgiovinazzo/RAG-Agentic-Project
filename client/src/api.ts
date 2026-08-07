@@ -82,7 +82,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify(title ? { title } : {}),
     }),
+  deleteConversation: (convId: number) =>
+    apiFetch<{ success: boolean }>(`/api/conversations/${convId}`, {
+      method: "DELETE",
+    }),
+  updateConversation: (convId: number, title: string) =>
+    apiFetch<{ id: number; title: string }>(`/api/conversations/${convId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    }),
   sendMessage: (convId: number, content: string) =>
+
     apiFetch<RunOutcome>(`/api/conversations/${convId}/messages`, {
       method: "POST",
       body: JSON.stringify({ content }),

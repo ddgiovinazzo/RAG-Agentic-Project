@@ -4,8 +4,8 @@ from sqlalchemy import func
 
 from server.agent import resume_run, run_agent
 from server.auth import require_auth
+from server.llm import generate
 from server.models import Conversation, Message, PendingAction, Run, RunStep, Ticket, User, db, utcnow
-
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -230,6 +230,40 @@ def create_conversation():
     return jsonify({"id": conv.id, "title": conv.title}), 201
 
 
+@api_bp.delete("/conversations/<int:conv_id>")
+@require_auth
+def delete_conversation(conv_id):
+    conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
+    if conv is None:
+        return jsonify({"error": "conversation not found"}), 404
+
+    runs = Run.query.filter_by(conversation_id=conv.id).all()
+    for run in runs:
+        PendingAction.query.filter_by(run_id=run.id).delete()
+        RunStep.query.filter_by(run_id=run.id).delete()
+        db.session.delete(run)
+
+    Message.query.filter_by(conversation_id=conv.id).delete()
+    db.session.delete(conv)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_bp.patch("/conversations/<int:conv_id>")
+@require_auth
+def update_conversation(conv_id):
+    conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
+    if conv is None:
+        return jsonify({"error": "conversation not found"}), 404
+    data = request.get_json(silent=True) or {}
+    new_title = data.get("title", "").strip()
+    if not new_title:
+        return jsonify({"error": "title is required"}), 400
+    conv.title = new_title
+    db.session.commit()
+    return jsonify({"id": conv.id, "title": conv.title})
+
+
 @api_bp.get("/conversations/<int:conv_id>/messages")
 @require_auth
 def get_conversation_messages(conv_id):
@@ -276,6 +310,23 @@ def send_message(conv_id):
     if not goal:
         return jsonify({"error": "content is required"}), 400
 
+    if conv.title in ("New conversation", "", None):
+        try:
+            res = generate([
+                {
+                    "role": "system",
+                    "content": "You are a title generator. Summarize the user's prompt into a concise 3 to 6 word title. Return ONLY the plain title text without quotes, markdown, or punctuation.",
+                },
+                {"role": "user", "content": goal},
+            ])
+            auto_title = (res.get("content") or "").strip().strip('"').strip("'")
+            if auto_title:
+                conv.title = auto_title[:60]
+            else:
+                conv.title = goal[:45].strip() + ("…" if len(goal) > 45 else "")
+        except Exception:
+            conv.title = goal[:45].strip() + ("…" if len(goal) > 45 else "")
+
     user_msg = Message(conversation_id=conv.id, role="user", content=goal)
     db.session.add(user_msg)
     db.session.flush()
@@ -288,7 +339,7 @@ def send_message(conv_id):
     db.session.commit()
 
     outcome = run_agent(run, goal)
-    return jsonify({**outcome, "trace": _serialize_steps(run)})
+    return jsonify({**outcome, "trace": _serialize_steps(run), "conversation_title": conv.title})
 
 
 @api_bp.post("/runs/<int:run_id>/confirm")
@@ -452,4 +503,3 @@ def delete_ticket_endpoint(ticket_id):
     db.session.delete(ticket)
     db.session.commit()
     return jsonify({"success": True})
-
