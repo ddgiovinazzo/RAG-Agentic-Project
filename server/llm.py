@@ -54,4 +54,55 @@ def generate(messages, tools):
             "call_id": call.get("id", "call_0"),
             "usage": usage,
         }
-    return {"type": "final", "content": message.get("content") or "", "usage": usage}
+
+    content = message.get("content") or ""
+    if "{" in content and "}" in content:
+        import re
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            try:
+                raw_str = match.group(0)
+                try:
+                    parsed = json.loads(raw_str)
+                except Exception:
+                    import ast
+                    parsed = ast.literal_eval(raw_str)
+
+                if isinstance(parsed, dict):
+                    tool_name = (
+                        parsed.get("name")
+                        or parsed.get("tool")
+                        or parsed.get("function")
+                    )
+                    if tool_name in [
+                        "search_knowledge",
+                        "list_tickets",
+                        "create_ticket",
+                        "update_ticket",
+                        "delete_ticket",
+                        "create_draft",
+                        "escalate",
+                    ]:
+                        args = (
+                            parsed.get("arguments")
+                            or parsed.get("parameters")
+                            or {}
+                        )
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except Exception:
+                                args = {"query": args}
+                        return {
+                            "type": "tool_call",
+                            "name": tool_name,
+                            "arguments": args if isinstance(args, dict) else {},
+                            "call_id": "call_fallback",
+                            "usage": usage,
+                        }
+            except Exception:
+                pass
+
+
+    return {"type": "final", "content": content, "usage": usage}
+

@@ -2,6 +2,7 @@ import {
   AppBar,
   Box,
   Button,
+  Chip,
   Divider,
   Drawer,
   Snackbar,
@@ -11,7 +12,6 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import AuditPage from "../audit/AuditPage";
@@ -20,6 +20,7 @@ import TracePanel from "../trace/TracePanel";
 import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
 import ChatView from "./ChatView";
 import ConversationList from "./ConversationList";
+import PromptStarters from "./PromptStarters";
 import { pairHistory } from "./history";
 
 const DRAWER_WIDTH = 260;
@@ -38,7 +39,8 @@ export default function AppPage() {
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
-  const [view, setView] = useState<"chat" | "tickets" | "audit">("chat");
+  const [view, setView] = useState<"tickets" | "chat" | "audit">("chat");
+  const [searchQuery, setSearchQuery] = useState("");
   const [ticketRefreshVersion, setTicketRefreshVersion] = useState(0);
 
   const checkTicketMutation = (outcome: RunOutcome) => {
@@ -52,19 +54,16 @@ export default function AppPage() {
   };
 
   useEffect(() => {
-    api
-      .listConversations()
-      .then((convs) => {
-        setConversations(convs);
-        if (convs.length > 0) {
-          selectConversation(convs[0].id);
-        }
-      })
-      .catch((err) => setSnack(errMsg(err)));
-  }, []);
+    const timer = setTimeout(() => {
+      api
+        .listConversations(searchQuery.trim() || undefined)
+        .then(setConversations)
+        .catch((err) => setSnack(errMsg(err)));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const awaiting = messages.some((m) => m.awaitingConfirmation);
-
 
   const selectConversation = (id: number) => {
     setSelectedId(id);
@@ -93,7 +92,6 @@ export default function AppPage() {
       setSnack(errMsg(err));
     }
   };
-
 
   const applyOutcome = (outcome: RunOutcome) => {
     checkTicketMutation(outcome);
@@ -159,7 +157,6 @@ export default function AppPage() {
       }
     }
 
-
     setMessages((ms) => [...ms, { role: "user", content: goal }]);
     if (!customGoal) setDraft("");
     setBusy(true);
@@ -168,7 +165,13 @@ export default function AppPage() {
     abortRef.current = controller;
 
     try {
-      applyOutcome(await api.sendMessage(targetId, goal, controller.signal));
+      const outcome = await api.sendMessage(targetId, goal, controller.signal);
+      if (outcome.conversation_title) {
+        setConversations((cs) =>
+          cs.map((c) => (c.id === targetId ? { ...c, title: outcome.conversation_title! } : c))
+        );
+      }
+      applyOutcome(outcome);
     } catch (err: any) {
       if (err?.name === "AbortError") {
         setMessages((ms) => [
@@ -186,9 +189,6 @@ export default function AppPage() {
     }
   };
 
-
-
-
   const confirm = async (approved: boolean) => {
     if (!panel) return;
     setBusy(true);
@@ -196,7 +196,6 @@ export default function AppPage() {
       const outcome = await api.confirmRun(panel.runId, approved);
       checkTicketMutation(outcome);
       if (outcome.status === "needs_confirmation") {
-
         setPanel({
           runId: outcome.run_id,
           status: outcome.status,
@@ -259,6 +258,33 @@ export default function AppPage() {
     }
   };
 
+  const sendPromptStarter = async (promptText: string) => {
+    let convId = selectedId;
+    if (convId === null) {
+      try {
+        const created = await api.createConversation();
+        setConversations((cs) => [...cs, { ...created, created_at: "" }]);
+        setSelectedId(created.id);
+        convId = created.id;
+      } catch (err) {
+        setSnack(errMsg(err));
+        return;
+      }
+    }
+    setMessages([{ role: "user", content: promptText }]);
+    setDraft("");
+    setBusy(true);
+    try {
+      applyOutcome(await api.sendMessage(convId, promptText));
+    } catch (err) {
+      setSnack(errMsg(err));
+      setDraft(promptText);
+      setMessages([]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const renameConversation = async (id: number, newTitle: string) => {
     try {
       const updated = await api.updateConversation(id, newTitle);
@@ -274,9 +300,23 @@ export default function AppPage() {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6">
-            Triage Agent
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mr: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: "-0.02em" }}>
+              Our Company Name
+            </Typography>
+            <Chip
+              label="Support Triage v1.0"
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: "0.7rem",
+                bgcolor: "rgba(255,255,255,0.12)",
+                color: "#E2E8F0",
+                fontWeight: 600,
+              }}
+            />
+          </Box>
+
           <Tabs
             value={view}
             onChange={(_, v: "tickets" | "chat" | "audit") => setView(v)}
@@ -284,19 +324,28 @@ export default function AppPage() {
             indicatorColor="secondary"
             sx={{ flexGrow: 1 }}
           >
-            <Tab value="tickets" label="Tickets" />
-            <Tab value="chat" label="Chat" />
-            <Tab value="audit" label="Audit" />
+            <Tab value="tickets" label="Tickets" sx={{ fontWeight: 600 }} />
+            <Tab value="chat" label="Chat" sx={{ fontWeight: 600 }} />
+            <Tab value="audit" label="Audit" sx={{ fontWeight: 600 }} />
           </Tabs>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body2" sx={{ color: "#E2E8F0", fontWeight: 500 }}>
+              {email}
+            </Typography>
 
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            {email}
-          </Typography>
-          <Button color="inherit" onClick={logout}>
-            Logout
-          </Button>
+            <Button
+              color="inherit"
+              size="small"
+              variant="outlined"
+              onClick={logout}
+              sx={{ borderColor: "rgba(255,255,255,0.2)" }}
+            >
+              Logout
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
+
       {view === "audit" ? (
         <Box component="main" sx={{ flexGrow: 1, overflowY: "auto" }}>
           <Toolbar />
@@ -324,18 +373,13 @@ export default function AppPage() {
                 ? { runId: panel.runId, tool: panel.pendingAction.tool, arguments: panel.pendingAction.arguments }
                 : null
             }
-
             onGlobalSend={(g) => send(g)}
             onGlobalStop={handleStop}
             onGlobalConfirm={confirm}
             refreshVersion={ticketRefreshVersion}
           />
-
-
         </Box>
       ) : (
-
-
         <>
           <Drawer
             variant="permanent"
@@ -348,6 +392,8 @@ export default function AppPage() {
             <ConversationList
               conversations={conversations}
               selectedId={selectedId}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
               onSelect={selectConversation}
               onDelete={deleteConversation}
               onRename={renameConversation}
@@ -361,10 +407,8 @@ export default function AppPage() {
           >
             <Toolbar />
             {selectedId === null ? (
-              <Box sx={{ p: 3 }}>
-                <Typography color="text.secondary">
-                  Select or create a conversation to start.
-                </Typography>
+              <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <PromptStarters onSelectPrompt={sendPromptStarter} />
               </Box>
             ) : (
               <ChatView
@@ -374,13 +418,12 @@ export default function AppPage() {
                 draft={draft}
                 onDraftChange={setDraft}
                 onSend={send}
+                onSelectPrompt={sendPromptStarter}
                 onOpenRun={openRun}
                 pendingAction={panel?.pendingAction}
                 onConfirm={confirm}
                 onStop={handleStop}
               />
-
-
             )}
           </Box>
           <Divider orientation="vertical" flexItem />

@@ -1,6 +1,8 @@
 import HourglassTopIcon from "@mui/icons-material/HourglassTop";
+import PersonIcon from "@mui/icons-material/Person";
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, Chip, Paper, Typography } from "@mui/material";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { Avatar, Box, Chip, Paper, Typography } from "@mui/material";
 import type { UiMessage } from "../types";
 
 interface Props {
@@ -11,43 +13,88 @@ interface Props {
 export default function MessageBubble({ message, onOpenRun }: Props) {
   const isUser = message.role === "user";
   return (
-    <Box sx={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
-      <Paper
-        elevation={1}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: isUser ? "row-reverse" : "row",
+        alignItems: "flex-start",
+        gap: 1.25,
+        mb: 0.5,
+      }}
+    >
+      <Avatar
         sx={{
-          p: 1.5,
-          maxWidth: "75%",
-          bgcolor: isUser ? "primary.main" : "background.paper",
-          color: isUser ? "primary.contrastText" : "text.primary",
+          width: 32,
+          height: 32,
+          bgcolor: isUser ? "#4F46E5" : "#0F172A",
+          fontSize: 18,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
         }}
       >
-        <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-          {message.content}
+        {isUser ? <PersonIcon fontSize="small" /> : <SmartToyIcon fontSize="small" sx={{ color: "#06B6D4" }} />}
+      </Avatar>
+      <Box sx={{ maxWidth: "75%" }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{
+            display: "block",
+            mb: 0.25,
+            px: 0.5,
+            textAlign: isUser ? "right" : "left",
+            fontWeight: 600,
+            fontSize: "0.7rem",
+          }}
+        >
+          {isUser ? "You" : "Support Agent"}
         </Typography>
-        {!isUser && message.awaitingConfirmation && (
-          <Chip
-            size="small"
-            icon={<HourglassTopIcon />}
-            label="waiting for your confirmation"
-            sx={{ mt: 1 }}
-          />
-        )}
-        {!isUser && !message.awaitingConfirmation && message.runId !== undefined && (
-          <Chip
-            size="small"
-            icon={<SearchIcon />}
-            data-testid={`trace-chip-${message.runId}`}
-            onClick={() => onOpenRun(message.runId!)}
-            label={`${message.stepCount ?? "?"} steps${
-              message.totalLatencyMs != null
-                ? ` · ${(message.totalLatencyMs / 1000).toFixed(1)}s`
-                : ""
-            }`}
-            sx={{ mt: 1, cursor: "pointer" }}
-          />
-        )}
-
-      </Paper>
+        <Paper
+          elevation={isUser ? 0 : 1}
+          sx={{
+            p: 1.75,
+            borderRadius: isUser ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
+            background: isUser
+              ? "linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)"
+              : "#FFFFFF",
+            color: isUser ? "#FFFFFF" : "#0F172A",
+            border: isUser ? "none" : "1px solid #E2E8F0",
+          }}
+        >
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+            {message.content}
+          </Typography>
+          {!isUser && message.awaitingConfirmation && (
+            <Chip
+              size="small"
+              icon={<HourglassTopIcon />}
+              label="waiting for your confirmation"
+              color="warning"
+              sx={{ mt: 1.25, fontWeight: 600 }}
+            />
+          )}
+          {!isUser && !message.awaitingConfirmation && message.runId !== undefined && (
+            <Chip
+              size="small"
+              icon={<SearchIcon />}
+              data-testid={`trace-chip-${message.runId}`}
+              onClick={() => onOpenRun(message.runId!)}
+              label={`${message.stepCount ?? "?"} steps${
+                message.totalLatencyMs != null
+                  ? ` · ${(message.totalLatencyMs / 1000).toFixed(1)}s`
+                  : ""
+              }`}
+              sx={{
+                mt: 1.25,
+                bgcolor: "#F1F5F9",
+                color: "#4F46E5",
+                fontWeight: 600,
+                border: "1px solid #CBD5E1",
+                "&:hover": { bgcolor: "#E2E8F0" },
+              }}
+            />
+          )}
+        </Paper>
+      </Box>
     </Box>
   );
 }

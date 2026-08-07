@@ -4,7 +4,9 @@ from sqlalchemy import func
 
 from server.agent import resume_run, run_agent
 from server.auth import require_auth
+from server.llm import generate
 from server.models import Conversation, Message, PendingAction, Run, RunStep, User, db
+
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -208,10 +210,27 @@ def list_runs():
 @api_bp.get("/conversations")
 @require_auth
 def list_conversations():
-    convs = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.id).all()
+    q = request.args.get("q", "").strip()
+    if q:
+        query = (
+            Conversation.query.outerjoin(Message, Conversation.id == Message.conversation_id)
+            .filter(
+                (Conversation.user_id == g.user.id)
+                & (
+                    (Conversation.title.ilike(f"%{q}%"))
+                    | (Message.content.ilike(f"%{q}%"))
+                )
+            )
+            .distinct()
+            .order_by(Conversation.id)
+        )
+        convs = query.all()
+    else:
+        convs = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.id).all()
     return jsonify(
         [{"id": c.id, "title": c.title, "created_at": c.created_at.isoformat()} for c in convs]
     )
+
 
 
 @api_bp.post("/conversations")
@@ -296,6 +315,23 @@ def send_message(conv_id):
     if not goal:
         return jsonify({"error": "content is required"}), 400
 
+    if conv.title in ("New conversation", "", None):
+        try:
+            res = generate([
+                {
+                    "role": "system",
+                    "content": "You are a title generator. Summarize the user's prompt into a concise 3 to 6 word title. Return ONLY the plain title text without quotes, markdown, or punctuation.",
+                },
+                {"role": "user", "content": goal},
+            ])
+            auto_title = (res.get("content") or "").strip().strip('"').strip("'")
+            if auto_title:
+                conv.title = auto_title[:60]
+            else:
+                conv.title = goal[:45].strip() + ("…" if len(goal) > 45 else "")
+        except Exception:
+            conv.title = goal[:45].strip() + ("…" if len(goal) > 45 else "")
+
     user_msg = Message(conversation_id=conv.id, role="user", content=goal)
     db.session.add(user_msg)
     db.session.flush()
@@ -308,7 +344,8 @@ def send_message(conv_id):
     db.session.commit()
 
     outcome = run_agent(run, goal)
-    return jsonify({**outcome, "trace": _serialize_steps(run)})
+    return jsonify({**outcome, "trace": _serialize_steps(run), "conversation_title": conv.title})
+
 
 
 @api_bp.post("/runs/<int:run_id>/confirm")

@@ -52,7 +52,9 @@ export interface RunOutcome {
   answer?: string;
   pending_action?: PendingAction;
   trace: TraceStep[];
+  conversation_title?: string;
 }
+
 
 export interface RunDetail {
   id: number;
