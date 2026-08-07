@@ -224,7 +224,42 @@ def create_conversation():
     return jsonify({"id": conv.id, "title": conv.title}), 201
 
 
+@api_bp.delete("/conversations/<int:conv_id>")
+@require_auth
+def delete_conversation(conv_id):
+    conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
+    if conv is None:
+        return jsonify({"error": "conversation not found"}), 404
+
+    runs = Run.query.filter_by(conversation_id=conv.id).all()
+    for run in runs:
+        PendingAction.query.filter_by(run_id=run.id).delete()
+        RunStep.query.filter_by(run_id=run.id).delete()
+        db.session.delete(run)
+
+    Message.query.filter_by(conversation_id=conv.id).delete()
+    db.session.delete(conv)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_bp.patch("/conversations/<int:conv_id>")
+@require_auth
+def update_conversation(conv_id):
+    conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
+    if conv is None:
+        return jsonify({"error": "conversation not found"}), 404
+    data = request.get_json(silent=True) or {}
+    new_title = data.get("title", "").strip()
+    if not new_title:
+        return jsonify({"error": "title is required"}), 400
+    conv.title = new_title
+    db.session.commit()
+    return jsonify({"id": conv.id, "title": conv.title})
+
+
 @api_bp.get("/conversations/<int:conv_id>/messages")
+
 @require_auth
 def get_conversation_messages(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
