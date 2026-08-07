@@ -18,6 +18,7 @@ import TracePanel from "../trace/TracePanel";
 import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
 import ChatView from "./ChatView";
 import ConversationList from "./ConversationList";
+import PromptStarters from "./PromptStarters";
 import { pairHistory } from "./history";
 
 const DRAWER_WIDTH = 260;
@@ -201,6 +202,33 @@ export default function AppPage() {
     }
   };
 
+  const sendPromptStarter = async (promptText: string) => {
+    let convId = selectedId;
+    if (convId === null) {
+      try {
+        const created = await api.createConversation();
+        setConversations((cs) => [...cs, { ...created, created_at: "" }]);
+        setSelectedId(created.id);
+        convId = created.id;
+      } catch (err) {
+        setSnack(errMsg(err));
+        return;
+      }
+    }
+    setMessages([{ role: "user", content: promptText }]);
+    setDraft("");
+    setBusy(true);
+    try {
+      applyOutcome(await api.sendMessage(convId, promptText));
+    } catch (err) {
+      setSnack(errMsg(err));
+      setDraft(promptText);
+      setMessages([]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const renameConversation = async (id: number, newTitle: string) => {
     try {
       const updated = await api.updateConversation(id, newTitle);
@@ -268,10 +296,8 @@ export default function AppPage() {
           >
             <Toolbar />
             {selectedId === null ? (
-              <Box sx={{ p: 3 }}>
-                <Typography color="text.secondary">
-                  Select or create a conversation to start.
-                </Typography>
+              <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <PromptStarters onSelectPrompt={sendPromptStarter} />
               </Box>
             ) : (
               <ChatView
@@ -281,6 +307,7 @@ export default function AppPage() {
                 draft={draft}
                 onDraftChange={setDraft}
                 onSend={send}
+                onSelectPrompt={sendPromptStarter}
                 onOpenRun={openRun}
               />
             )}

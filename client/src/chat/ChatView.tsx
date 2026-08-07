@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import type { UiMessage } from "../types";
 import MessageBubble from "./MessageBubble";
+import PromptStarters from "./PromptStarters";
 
 interface Props {
   messages: UiMessage[];
@@ -16,6 +17,7 @@ interface Props {
   draft: string;
   onDraftChange: (v: string) => void;
   onSend: () => void;
+  onSelectPrompt?: (prompt: string) => void;
   onOpenRun: (runId: number) => void;
 }
 
@@ -26,15 +28,30 @@ export default function ChatView({
   draft,
   onDraftChange,
   onSend,
+  onSelectPrompt,
   onOpenRun,
 }: Props) {
+  const handleStarterSelect = (prompt: string) => {
+    if (onSelectPrompt) {
+      onSelectPrompt(prompt);
+    } else {
+      onDraftChange(prompt);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      <Stack spacing={1.5} sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-        {messages.map((m, i) => (
-          <MessageBubble key={i} message={m} onOpenRun={onOpenRun} />
-        ))}
-      </Stack>
+      {messages.length === 0 ? (
+        <Box sx={{ flex: 1, overflowY: "auto" }}>
+          <PromptStarters onSelectPrompt={handleStarterSelect} />
+        </Box>
+      ) : (
+        <Stack spacing={1.5} sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+          {messages.map((m, i) => (
+            <MessageBubble key={i} message={m} onOpenRun={onOpenRun} />
+          ))}
+        </Stack>
+      )}
       {busy && <LinearProgress />}
       <Box
         component="form"
@@ -64,3 +81,4 @@ export default function ChatView({
     </Box>
   );
 }
+
