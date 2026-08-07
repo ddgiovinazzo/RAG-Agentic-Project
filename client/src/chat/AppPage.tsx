@@ -11,11 +11,11 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import AuditPage from "../audit/AuditPage";
+import TicketsPage from "../tickets/TicketsPage";
 import TracePanel from "../trace/TracePanel";
 import type { Conversation, PanelState, RunOutcome, UiMessage } from "../types";
 import ChatView from "./ChatView";
@@ -39,11 +39,19 @@ export default function AppPage() {
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
-  const [view, setView] = useState<"chat" | "audit">("chat");
+  const [view, setView] = useState<"tickets" | "chat" | "audit">("chat");
   const [searchQuery, setSearchQuery] = useState("");
+  const [ticketRefreshVersion, setTicketRefreshVersion] = useState(0);
 
-
-
+  const checkTicketMutation = (outcome: RunOutcome) => {
+    if (
+      outcome.trace.some((s) =>
+        ["create_ticket", "update_ticket", "delete_ticket"].includes(s.tool_name || "")
+      )
+    ) {
+      setTicketRefreshVersion((v) => v + 1);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -56,7 +64,6 @@ export default function AppPage() {
   }, [searchQuery]);
 
   const awaiting = messages.some((m) => m.awaitingConfirmation);
-
 
   const selectConversation = (id: number) => {
     setSelectedId(id);
@@ -78,7 +85,8 @@ export default function AppPage() {
   const newConversation = async () => {
     try {
       const created = await api.createConversation();
-      setConversations((cs) => [...cs, { ...created, created_at: "" }]);
+      const item = { ...created, created_at: new Date().toISOString() };
+      setConversations((cs) => [item, ...cs]);
       selectConversation(created.id);
     } catch (err) {
       setSnack(errMsg(err));
@@ -86,6 +94,7 @@ export default function AppPage() {
   };
 
   const applyOutcome = (outcome: RunOutcome) => {
+    checkTicketMutation(outcome);
     if (outcome.status === "needs_confirmation") {
       setMessages((ms) => [
         ...ms,
@@ -120,35 +129,72 @@ export default function AppPage() {
     });
   };
 
-  const send = async () => {
-    const goal = draft.trim();
-    if (!selectedId || !goal) return;
+  const abortRef = useRef<AbortController | null>(null);
+
+  const handleStop = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setBusy(false);
+  };
+
+  const send = async (customGoal?: string) => {
+    const goal = (customGoal ?? draft).trim();
+    if (!goal) return;
+
+    let targetId = selectedId;
+    if (!targetId) {
+      try {
+        const created = await api.createConversation();
+        const item = { ...created, created_at: new Date().toISOString() };
+        targetId = created.id;
+        setSelectedId(created.id);
+        setConversations((cs) => [item, ...cs]);
+      } catch (err) {
+        setSnack(errMsg(err));
+        return;
+      }
+    }
+
     setMessages((ms) => [...ms, { role: "user", content: goal }]);
-    setDraft("");
+    if (!customGoal) setDraft("");
     setBusy(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const outcome = await api.sendMessage(selectedId, goal);
+      const outcome = await api.sendMessage(targetId, goal, controller.signal);
       if (outcome.conversation_title) {
         setConversations((cs) =>
-          cs.map((c) => (c.id === selectedId ? { ...c, title: outcome.conversation_title! } : c))
+          cs.map((c) => (c.id === targetId ? { ...c, title: outcome.conversation_title! } : c))
         );
       }
       applyOutcome(outcome);
-    } catch (err) {
-      setSnack(errMsg(err));
-      setDraft(goal);
-      setMessages((ms) => ms.slice(0, -1));
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        setMessages((ms) => [
+          ...ms,
+          { role: "assistant", content: "Generation stopped by user." },
+        ]);
+      } else {
+        setSnack(errMsg(err));
+        if (!customGoal) setDraft(goal);
+        setMessages((ms) => ms.slice(0, -1));
+      }
     } finally {
+      abortRef.current = null;
       setBusy(false);
     }
   };
-
 
   const confirm = async (approved: boolean) => {
     if (!panel) return;
     setBusy(true);
     try {
       const outcome = await api.confirmRun(panel.runId, approved);
+      checkTicketMutation(outcome);
       if (outcome.status === "needs_confirmation") {
         setPanel({
           runId: outcome.run_id,
@@ -273,14 +319,14 @@ export default function AppPage() {
 
           <Tabs
             value={view}
-            onChange={(_, v: "chat" | "audit") => setView(v)}
+            onChange={(_, v: "tickets" | "chat" | "audit") => setView(v)}
             textColor="inherit"
             indicatorColor="secondary"
             sx={{ flexGrow: 1 }}
           >
+            <Tab value="tickets" label="Tickets" sx={{ fontWeight: 600 }} />
             <Tab value="chat" label="Chat" sx={{ fontWeight: 600 }} />
             <Tab value="audit" label="Audit" sx={{ fontWeight: 600 }} />
-
           </Tabs>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Typography variant="body2" sx={{ color: "#E2E8F0", fontWeight: 500 }}>
@@ -305,6 +351,34 @@ export default function AppPage() {
           <Toolbar />
           <AuditPage />
         </Box>
+      ) : view === "tickets" ? (
+        <Box component="main" sx={{ flexGrow: 1, overflowY: "auto" }}>
+          <Toolbar />
+          <TicketsPage
+            selectedConversationId={selectedId}
+            onSelectConversation={selectConversation}
+            onOpenFullChat={(convId) => {
+              selectConversation(convId);
+              setView("chat");
+            }}
+            conversations={conversations}
+            onNewConversation={newConversation}
+            onRefreshConversations={() => {
+              api.listConversations().then(setConversations).catch(() => {});
+            }}
+            globalBusy={busy}
+            globalMessages={messages}
+            globalPendingAction={
+              panel?.pendingAction
+                ? { runId: panel.runId, tool: panel.pendingAction.tool, arguments: panel.pendingAction.arguments }
+                : null
+            }
+            onGlobalSend={(g) => send(g)}
+            onGlobalStop={handleStop}
+            onGlobalConfirm={confirm}
+            refreshVersion={ticketRefreshVersion}
+          />
+        </Box>
       ) : (
         <>
           <Drawer
@@ -325,7 +399,6 @@ export default function AppPage() {
               onRename={renameConversation}
               onNew={newConversation}
             />
-
           </Drawer>
 
           <Box
@@ -347,6 +420,9 @@ export default function AppPage() {
                 onSend={send}
                 onSelectPrompt={sendPromptStarter}
                 onOpenRun={openRun}
+                pendingAction={panel?.pendingAction}
+                onConfirm={confirm}
+                onStop={handleStop}
               />
             )}
           </Box>

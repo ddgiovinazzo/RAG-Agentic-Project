@@ -47,7 +47,6 @@ export default function MessageBubble({ message, onOpenRun }: Props) {
           }}
         >
           {isUser ? "You" : "Support Agent"}
-
         </Typography>
         <Paper
           elevation={isUser ? 0 : 1}
@@ -99,4 +98,3 @@ export default function MessageBubble({ message, onOpenRun }: Props) {
     </Box>
   );
 }
-

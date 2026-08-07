@@ -102,7 +102,7 @@ test("needs_confirmation pauses: approve resolves the placeholder", async () => 
   expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeDisabled();
   expect(screen.getByText(/the agent wants to run/i)).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: /approve/i }));
+  await userEvent.click(screen.getByRole("button", { name: /^approve$/i }));
   expect(await screen.findByText("Escalated to on-call.")).toBeInTheDocument();
   expect(screen.queryByText(/waiting for your confirmation/i)).not.toBeInTheDocument();
   expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeEnabled();
@@ -181,10 +181,10 @@ test("reloading a conversation with a paused run restores the pending confirmati
   ).toBeInTheDocument();
   expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeDisabled();
   expect(
-    await screen.findByRole("button", { name: /approve/i })
+    await screen.findByRole("button", { name: /^approve$/i })
   ).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: /approve/i }));
+  await userEvent.click(screen.getByRole("button", { name: /^approve$/i }));
   expect(await screen.findByText("Escalated to on-call.")).toBeInTheDocument();
   expect(screen.queryByText(/waiting for your confirmation/i)).not.toBeInTheDocument();
   expect(screen.getByPlaceholderText(/give the agent a goal/i)).toBeEnabled();

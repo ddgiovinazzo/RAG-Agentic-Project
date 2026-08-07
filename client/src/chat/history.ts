@@ -21,9 +21,16 @@ export function pairHistory(history: ConversationHistory): UiMessage[] {
         pendingRun = undefined;
       }
     } else {
-      out.push({ role: "assistant", content: m.content, runId: pendingRun?.id });
+      out.push({
+        role: "assistant",
+        content: m.content,
+        runId: pendingRun?.id,
+        stepCount: pendingRun?.step_count,
+        totalLatencyMs: pendingRun?.total_latency_ms,
+      });
       pendingRun = undefined;
     }
+
   }
   return out;
 }

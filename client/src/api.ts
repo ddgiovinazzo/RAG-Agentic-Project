@@ -6,7 +6,10 @@ import type {
   RunOutcome,
   RunsPage,
   RunStats,
+  Ticket,
+  TicketFilters,
 } from "./types";
+
 
 export class ApiError extends Error {
   constructor(
@@ -95,22 +98,47 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ title }),
     }),
-  sendMessage: (convId: number, content: string) =>
-
+  sendMessage: (convId: number, content: string, signal?: AbortSignal) =>
     apiFetch<RunOutcome>(`/api/conversations/${convId}/messages`, {
       method: "POST",
       body: JSON.stringify({ content }),
+      signal,
     }),
   getHistory: (convId: number) =>
     apiFetch<ConversationHistory>(`/api/conversations/${convId}/messages`),
-  confirmRun: (runId: number, approved: boolean) =>
+  confirmRun: (runId: number, approved: boolean, signal?: AbortSignal) =>
     apiFetch<RunOutcome>(`/api/runs/${runId}/confirm`, {
       method: "POST",
       body: JSON.stringify({ approved }),
+      signal,
     }),
+
   getRun: (runId: number) => apiFetch<RunDetail>(`/api/runs/${runId}`),
   listRuns: (filters: RunFilters) =>
     apiFetch<RunsPage>(`/api/runs${runQuery(filters, true)}`),
   getRunStats: (filters: RunFilters) =>
     apiFetch<RunStats>(`/api/runs/stats${runQuery(filters, false)}`),
+  getTickets: (filters?: TicketFilters) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.priority) params.append("priority", filters.priority);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.q) params.append("q", filters.q);
+    const qs = params.toString();
+    return apiFetch<Ticket[]>(qs ? `/api/tickets?${qs}` : "/api/tickets");
+  },
+  createTicket: (data: { title: string; description: string; priority?: string; category?: string }) =>
+    apiFetch<Ticket>("/api/tickets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateTicket: (ticketId: number, data: Partial<Ticket>) =>
+    apiFetch<Ticket>(`/api/tickets/${ticketId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteTicket: (ticketId: number) =>
+    apiFetch<{ success: boolean }>(`/api/tickets/${ticketId}`, {
+      method: "DELETE",
+    }),
 };
