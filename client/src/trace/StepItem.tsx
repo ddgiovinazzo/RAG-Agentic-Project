@@ -6,9 +6,11 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Chip,
   Stack,
   Typography,
 } from "@mui/material";
+import { TOOL_COLOR_KEY } from "../theme";
 import type { TraceStep } from "../types";
 
 function Section({ label, value }: { label: string; value: unknown }) {
@@ -40,21 +42,34 @@ function Section({ label, value }: { label: string; value: unknown }) {
 
 export default function StepItem({ step }: { step: TraceStep }) {
   const isLlm = step.kind === "llm_call";
+  const toolKey = isLlm ? "model_call" : (step.tool_name ?? "default");
+  const toolBadge = TOOL_COLOR_KEY[toolKey] || TOOL_COLOR_KEY.default;
   const title = isLlm ? "model call" : (step.tool_name ?? step.kind);
   return (
     <Accordion disableGutters>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
           {isLlm ? (
             <PsychologyIcon fontSize="small" color="secondary" />
           ) : (
             <BuildIcon fontSize="small" color="primary" />
           )}
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             #{step.seq} · {title}
           </Typography>
+          <Chip
+            label={toolBadge.label}
+            size="small"
+            sx={{
+              bgcolor: toolBadge.bg,
+              color: toolBadge.color,
+              height: 20,
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          />
           {step.latency_ms != null && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
               {step.latency_ms} ms
             </Typography>
           )}
