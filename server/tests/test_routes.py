@@ -162,8 +162,15 @@ def test_get_conversation_messages_history(client, auth_headers, monkeypatch):
     assert roles == ["user", "assistant"]
     assert body["messages"][0]["content"] == "hi"
     assert body["runs"] == [
-        {"id": run_id, "user_message_id": body["messages"][0]["id"], "status": "running"}
+        {
+            "id": run_id,
+            "user_message_id": body["messages"][0]["id"],
+            "status": "running",
+            "step_count": 0,
+            "total_latency_ms": None,
+        }
     ]
+
 
 
 def test_get_conversation_messages_isolated(client, auth_headers, other_headers):

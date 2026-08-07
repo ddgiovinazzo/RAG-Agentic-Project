@@ -5,7 +5,7 @@ from sqlalchemy import func
 from server.agent import resume_run, run_agent
 from server.auth import require_auth
 from server.llm import generate
-from server.models import Conversation, Message, PendingAction, Run, RunStep, User, db
+from server.models import Conversation, Message, PendingAction, Run, RunStep, Ticket, User, db, utcnow
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -222,11 +222,15 @@ def list_conversations():
                 )
             )
             .distinct()
-            .order_by(Conversation.id)
+            .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
         )
         convs = query.all()
     else:
-        convs = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.id).all()
+        convs = (
+            Conversation.query.filter_by(user_id=g.user.id)
+            .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+            .all()
+        )
     return jsonify(
         [{"id": c.id, "title": c.title, "created_at": c.created_at.isoformat()} for c in convs]
     )
@@ -278,12 +282,12 @@ def update_conversation(conv_id):
 
 
 @api_bp.get("/conversations/<int:conv_id>/messages")
-
 @require_auth
 def get_conversation_messages(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
     if conv is None:
         return jsonify({"error": "conversation not found"}), 404
+
     messages = Message.query.filter_by(conversation_id=conv.id).order_by(Message.id).all()
     runs = Run.query.filter_by(conversation_id=conv.id).order_by(Run.id).all()
     return jsonify(
@@ -298,7 +302,13 @@ def get_conversation_messages(conv_id):
                 for m in messages
             ],
             "runs": [
-                {"id": r.id, "user_message_id": r.user_message_id, "status": r.status}
+                {
+                    "id": r.id,
+                    "user_message_id": r.user_message_id,
+                    "status": r.status,
+                    "step_count": len(r.steps),
+                    "total_latency_ms": r.total_latency_ms,
+                }
                 for r in runs
             ],
         }
@@ -311,6 +321,8 @@ def send_message(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
     if conv is None:
         return jsonify({"error": "conversation not found"}), 404
+    conv.updated_at = utcnow()
+
     goal = ((request.get_json(silent=True) or {}).get("content") or "").strip()
     if not goal:
         return jsonify({"error": "content is required"}), 400
@@ -345,7 +357,6 @@ def send_message(conv_id):
 
     outcome = run_agent(run, goal)
     return jsonify({**outcome, "trace": _serialize_steps(run), "conversation_title": conv.title})
-
 
 
 @api_bp.post("/runs/<int:run_id>/confirm")
@@ -388,3 +399,124 @@ def get_run(run_id):
             "arguments": pending.arguments,
         }
     return jsonify(body)
+
+
+@api_bp.get("/tickets")
+@require_auth
+def get_tickets():
+    status = request.args.get("status")
+    priority = request.args.get("priority")
+    category = request.args.get("category")
+    q = request.args.get("q", "").strip()
+
+    query = Ticket.query.filter_by(user_id=g.user.id)
+    if status:
+        query = query.filter_by(status=status)
+    if priority:
+        query = query.filter_by(priority=priority)
+    if category:
+        query = query.filter_by(category=category)
+    if q:
+        query = query.filter(
+            (Ticket.title.ilike(f"%{q}%")) | (Ticket.description.ilike(f"%{q}%"))
+        )
+
+    tickets = query.order_by(Ticket.id.desc()).all()
+    return jsonify(
+        [
+            {
+                "id": t.id,
+                "title": t.title,
+                "description": t.description,
+                "status": t.status,
+                "priority": t.priority,
+                "category": t.category,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+            }
+            for t in tickets
+        ]
+    )
+
+
+@api_bp.post("/tickets")
+@require_auth
+def create_ticket():
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    priority = data.get("priority") or "medium"
+    category = data.get("category") or "General"
+
+    if not title or not description:
+        return jsonify({"error": "title and description are required"}), 400
+
+    ticket = Ticket(
+        user_id=g.user.id,
+        title=title,
+        description=description,
+        priority=priority,
+        category=category,
+        status="open",
+    )
+    db.session.add(ticket)
+    db.session.commit()
+    return (
+        jsonify(
+            {
+                "id": ticket.id,
+                "title": ticket.title,
+                "description": ticket.description,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "category": ticket.category,
+                "created_at": ticket.created_at.isoformat(),
+            }
+        ),
+        201,
+    )
+
+
+@api_bp.patch("/tickets/<int:ticket_id>")
+@require_auth
+def update_ticket_endpoint(ticket_id):
+    ticket = Ticket.query.filter_by(id=ticket_id, user_id=g.user.id).first()
+    if ticket is None:
+        return jsonify({"error": "ticket not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    if "title" in data and data["title"].strip():
+        ticket.title = data["title"].strip()
+    if "description" in data and data["description"].strip():
+        ticket.description = data["description"].strip()
+    if "status" in data:
+        ticket.status = data["status"]
+    if "priority" in data:
+        ticket.priority = data["priority"]
+    if "category" in data:
+        ticket.category = data["category"]
+
+    db.session.commit()
+    return jsonify(
+        {
+            "id": ticket.id,
+            "title": ticket.title,
+            "description": ticket.description,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "category": ticket.category,
+            "updated_at": ticket.updated_at.isoformat() if ticket.updated_at else None,
+        }
+    )
+
+
+@api_bp.delete("/tickets/<int:ticket_id>")
+@require_auth
+def delete_ticket_endpoint(ticket_id):
+    ticket = Ticket.query.filter_by(id=ticket_id, user_id=g.user.id).first()
+    if ticket is None:
+        return jsonify({"error": "ticket not found"}), 404
+
+    db.session.delete(ticket)
+    db.session.commit()
+    return jsonify({"success": True})
