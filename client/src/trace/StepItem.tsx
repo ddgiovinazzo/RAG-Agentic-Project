@@ -10,8 +10,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import type { TraceStep } from "../types";
 import { TOOL_COLOR_KEY } from "../theme";
+import type { TraceStep } from "../types";
 
 function Section({ label, value }: { label: string; value: unknown }) {
   return (
@@ -88,4 +88,3 @@ export default function StepItem({ step }: { step: TraceStep }) {
     </Accordion>
   );
 }
-
