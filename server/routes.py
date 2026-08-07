@@ -210,14 +210,31 @@ def list_runs():
 @api_bp.get("/conversations")
 @require_auth
 def list_conversations():
-    convs = (
-        Conversation.query.filter_by(user_id=g.user.id)
-        .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
-        .all()
-    )
+    q = request.args.get("q", "").strip()
+    if q:
+        query = (
+            Conversation.query.outerjoin(Message, Conversation.id == Message.conversation_id)
+            .filter(
+                (Conversation.user_id == g.user.id)
+                & (
+                    (Conversation.title.ilike(f"%{q}%"))
+                    | (Message.content.ilike(f"%{q}%"))
+                )
+            )
+            .distinct()
+            .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+        )
+        convs = query.all()
+    else:
+        convs = (
+            Conversation.query.filter_by(user_id=g.user.id)
+            .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+            .all()
+        )
     return jsonify(
         [{"id": c.id, "title": c.title, "created_at": c.created_at.isoformat()} for c in convs]
     )
+
 
 
 @api_bp.post("/conversations")

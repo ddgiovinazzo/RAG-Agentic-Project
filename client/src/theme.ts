@@ -6,7 +6,6 @@ import { createTheme } from "@mui/material/styles";
  * Standardized color palette, typography, shape tokens, and tool status keys
  * for enterprise-grade UI consistency across all feature branches.
  */
-
 export const BRAND_TOKENS = {
   primary: "#4F46E5", // Modern Indigo
   primaryHover: "#4338CA",

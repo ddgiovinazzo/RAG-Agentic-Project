@@ -77,9 +77,10 @@ test("chat tab is unaffected and switching back works", async () => {
   await screen.findByText("50%");
   await userEvent.click(screen.getByRole("tab", { name: /chat/i }));
   expect(
-    await screen.findByText(/select or create a conversation/i)
+    await screen.findByText(/how can i assist you today/i)
   ).toBeInTheDocument();
 });
+
 
 test("audit tab renders both charts when there is data", async () => {
   renderAudit();
