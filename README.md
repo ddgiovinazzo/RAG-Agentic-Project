@@ -112,6 +112,7 @@ Before anyone clones anything, **one teammate creates the repository your team w
 #    Runs AnythingLLM at http://localhost:3001. Load the docs in sample-data/,
 #    then create a developer API key inside its settings.
 docker run -d -p 3001:3001 \
+  -e STORAGE_DIR="/app/server/storage" \
   -v anythingllm_storage:/app/server/storage \
   --name anythingllm mintplexlabs/anythingllm
 
@@ -127,11 +128,13 @@ ollama pull llama3.2:1b       # tiny model for fast local iteration
 # 3. Configure env (paste your AnythingLLM API key + workspace here)
 cp .env.example .env
 
-# 4. Start the agent backend (terminal 1)
-cd server
+# 4. Start Postgres + the agent backend (terminal 1)
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=agent -e POSTGRES_DB=agentdb \
+  -v agentdb_data:/var/lib/postgresql/data --name agentdb postgres:16
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-flask run                       # http://localhost:5000
+pip install -r server/requirements.txt
+flask --app server.app db upgrade   # create/update the schema
+flask --app server.app run --debug  # http://localhost:5000
 
 # 5. Start the frontend (terminal 2)
 cd client
@@ -262,6 +265,8 @@ Agents are multi-step and stochastic, so "it worked once" is not evaluation. The
 - **Score the outcome and the path:** for each task, did it reach the right result (success / partial / fail), and how many steps did it take? Fewer steps and the right tools = a healthier agent.
 - **Use your observability log:** when a task fails, the trace tells you *where* — wrong tool, bad arguments, or a bad final answer.
 - **Re-run after changes:** when you change the prompt, the tool descriptions, or the model, re-run the set and watch success rate and step count move.
+
+The app's **Audit tab** (client) is the built-in run viewer: per-run traces, success rate, latency and token stats — use it when scoring eval runs.
 
 Record every run in `docs/eval.md` so you can show progress over time — that "we changed X and success went from 5/10 to 9/10" story is the best thing you can show in a demo and an interview.
 

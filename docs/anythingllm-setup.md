@@ -5,7 +5,10 @@ Project 1 is [AnythingLLM](https://github.com/Mintplex-Labs/anything-llm) — a 
 ## 1. Start it (Docker)
 
 ```bash
+# STORAGE_DIR is required — without it the container crash-loops on startup.
+# It's documented in .env.example; copy that to .env first (cp .env.example .env).
 docker run -d -p 3001:3001 \
+  -e STORAGE_DIR="/app/server/storage" \
   -v anythingllm_storage:/app/server/storage \
   --name anythingllm mintplexlabs/anythingllm
 ```
