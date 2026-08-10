@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Exploration mode active. Source is read-only. Propose changes as markdown notes in ./notes/.'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$(date -Iseconds) READ $TOOL_FILE \" >> ./notes/exploration-log.txt"
+          }
+        ]
+      }
+    ]
+  }
+}
