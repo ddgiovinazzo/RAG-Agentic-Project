@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'Exploration mode active. Source is read-only. Propose changes as markdown notes in ./notes/.'"
+            "command": "mkdir -p ./notes && printf '%s\n' '# Exploration mode' '' 'This is exploration mode. Source is read-only. Propose changes as markdown notes in ./notes/.' > ./notes/proposed-change.md && echo 'Exploration mode active. Source is read-only. Propose changes as markdown notes in ./notes/.'"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"$(date -Iseconds) READ $TOOL_FILE \" >> ./notes/exploration-log.txt"
+            "command": "mkdir -p ./notes && echo \"$(date -Iseconds) READ $TOOL_FILE\" >> ./notes/exploration-log.txt"
           }
         ]
       }
