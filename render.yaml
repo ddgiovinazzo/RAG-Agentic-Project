@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: rag-agentic-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: gunicorn --workers 2 --bind 0.0.0.0:$PORT server.app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///agent.db
+      - key: AGENT_API_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: AGENT_MODEL
+        value: llama-3.3-70b-versatile
+      - key: MAX_AGENT_STEPS
+        value: "5"
+      - key: TOOL_TIMEOUT_SECONDS
+        value: "15"
+      - key: ALLOWED_ORIGINS
+        sync: false
