@@ -15,6 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = os.environ.get("ANYTHINGLLM_BASE_URL", "http://localhost:3001").rstrip("/")
+PORT = os.environ.get("ANYTHINGLLM_PORT", "")
+if PORT and ":" not in BASE_URL.split("://")[-1]:
+    BASE_URL = f"{BASE_URL}:{PORT}"
 API_KEY = os.environ.get("ANYTHINGLLM_API_KEY", "")
 WORKSPACE = os.environ.get("ANYTHINGLLM_WORKSPACE", "apprentice-kb")
 
