@@ -55,10 +55,13 @@ npx cloudflared tunnel --url http://localhost:3001
 ```
 Copy the generated `https://<random-id>.trycloudflare.com` URL and set it as `ANYTHINGLLM_BASE_URL` on your backend.
 
-### Option B: Deploy AnythingLLM on Hugging Face Spaces (Persistent Cloud)
-1. Create a free space on [Hugging Face Spaces](https://huggingface.co/spaces).
-2. Select **Docker** as the environment (Hugging Face provides 16GB RAM for free).
-3. Deploy `mintplexlabs/anythingllm` container and set its public URL as `ANYTHINGLLM_BASE_URL`.
+### Option B: Deploy AnythingLLM on Render (Docker Web Service)
+1. Deploy `mintplexlabs/anythingllm` as a Web Service on Render.
+2. Set Environment Variable `PORT=3001` (this exposes the AnythingLLM web UI at `https://anythingllm-service.onrender.com`).
+3. Set Environment Variable `STORAGE_DIR=/app/server/storage`.
+4. Open `https://anythingllm-service.onrender.com` in your browser.
+5. Go to **Settings → API Keys → Generate Key**, copy the generated key, and set it as `ANYTHINGLLM_API_KEY` on your `RAG-Agentic-Project` backend.
+6. Run `.venv/bin/python3 scripts/seed_rag.py` to seed and embed the knowledge base files.
 
 ---
 
