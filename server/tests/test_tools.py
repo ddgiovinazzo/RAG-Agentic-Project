@@ -79,3 +79,16 @@ def test_search_knowledge_handles_timeout(app, monkeypatch):
     from server.tools.search_knowledge import search_knowledge
 
     assert "error" in search_knowledge("x")
+
+
+def test_generate_rescues_groq_tool_use_failed(app, monkeypatch):
+    # Raw JSON string:
+    import json as _json
+    err_json = _json.dumps({
+        "error": {
+            "message": "Failed to call a function.",
+            "type": "invalid_request_error",
+            "code": "tool_use_failed",
+            "failed_generation": '<function=search_knowledge{"query": "company remote work policy"}></function>'
+        }
+    })

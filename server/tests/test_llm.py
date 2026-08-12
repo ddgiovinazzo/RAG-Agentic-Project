@@ -115,6 +115,34 @@ def test_generate_raises_llm_error_on_connection_failure(app, monkeypatch):
         generate([], [])
 
 
+def test_generate_rescues_groq_tool_use_failed(app, monkeypatch):
+    import json as _json
+    err_json = _json.dumps({
+        "error": {
+            "message": "Failed to call a function.",
+            "type": "invalid_request_error",
+            "code": "tool_use_failed",
+            "failed_generation": '<function=search_knowledge{"query": "company remote work policy"}></function>'
+        }
+    })
+
+    class Groq400Response:
+        status_code = 400
+        text = err_json
+        def raise_for_status(self):
+            exc = requests.HTTPError("400 Client Error")
+            exc.response = self
+            raise exc
+
+    monkeypatch.setattr("server.llm.requests.post", lambda *a, **k: Groq400Response())
+    from server.llm import generate
+
+    result = generate([{"role": "user", "content": "x"}], [])
+    assert result["type"] == "tool_call"
+    assert result["name"] == "search_knowledge"
+    assert result["arguments"] == {"query": "company remote work policy"}
+
+
 def test_generate_parses_usage(app, monkeypatch):
     payload = {
         "choices": [{"message": {"content": "hi"}}],
