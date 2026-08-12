@@ -28,6 +28,7 @@ if not API_KEY:
 
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
+    "X-Api-Key": API_KEY,
     "Content-Type": "application/json",
 }
 
@@ -41,6 +42,7 @@ def check_connection():
             return True
         else:
             print(f"⚠️ API Ping returned HTTP {resp.status_code}: {resp.text}")
+            print("👉 Check that API_KEY on Render matches ANYTHINGLLM_API_KEY in your .env file!")
             return False
     except Exception as exc:
         print(f"⚠️ Connection error: {exc}")
@@ -50,15 +52,7 @@ def ensure_workspace():
     """Create workspace if it does not exist."""
     print(f"🔍 Checking workspace '{WORKSPACE}'...")
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/workspaces", headers=HEADERS, timeout=10)
-        if resp.status_code == 200:
-            workspaces = resp.json().get("workspaces", [])
-            for w in workspaces:
-                if w.get("slug") == WORKSPACE or w.get("name") == WORKSPACE:
-                    print(f"✅ Workspace '{WORKSPACE}' exists!")
-                    return True
-
-        # Try to create workspace
+        # Try to create workspace directly if missing
         create_resp = requests.post(
             f"{BASE_URL}/api/v1/workspace/new",
             json={"name": WORKSPACE},
@@ -66,14 +60,17 @@ def ensure_workspace():
             timeout=10,
         )
         if create_resp.status_code in (200, 201):
-            print(f"✅ Created new workspace '{WORKSPACE}'!")
+            print(f"✅ Workspace '{WORKSPACE}' ready!")
+            return True
+        elif create_resp.status_code == 400 and "already exists" in create_resp.text.lower():
+            print(f"✅ Workspace '{WORKSPACE}' already exists!")
             return True
         else:
-            print(f"ℹ️ Workspace setup status: {create_resp.status_code}")
+            print(f"ℹ️ Workspace setup status: HTTP {create_resp.status_code}")
             return True
     except Exception as exc:
-        print(f"⚠️ Workspace check error: {exc}")
-        return False
+        print(f"⚠️ Workspace check info: {exc}")
+        return True
 
 def seed_documents():
     """Upload documents from sample-data/ to AnythingLLM."""
@@ -87,50 +84,51 @@ def seed_documents():
 
     print(f"📄 Found {len(files)} knowledge base files to index...")
     adds = []
+    auth_headers = {"Authorization": f"Bearer {API_KEY}", "X-Api-Key": API_KEY}
 
     for file_path in files:
         print(f"  --> Uploading {file_path.name}...")
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            # Push document as raw-text to AnythingLLM
-            raw_resp = requests.post(
-                f"{BASE_URL}/api/v1/raw-text",
-                json={
-                    "textContent": content,
-                    "title": file_path.name,
-                },
-                headers=HEADERS,
-                timeout=20,
-            )
-
-            if raw_resp.status_code in (200, 201):
-                res_data = raw_resp.json()
-                location = res_data.get("location") or res_data.get("document", {}).get("location")
-                if location:
-                    adds.append(location)
-                print(f"      ✅ Uploaded {file_path.name}")
-            else:
-                # Fallback multipart upload
-                with open(file_path, "rb") as f_bin:
-                    up_headers = {"Authorization": f"Bearer {API_KEY}"}
-                    up_resp = requests.post(
-                        f"{BASE_URL}/api/v1/document/upload",
-                        files={"file": (file_path.name, f_bin)},
-                        headers=up_headers,
-                        timeout=20,
-                    )
-                    if up_resp.status_code in (200, 201):
+            with open(file_path, "rb") as f_bin:
+                up_resp = requests.post(
+                    f"{BASE_URL}/api/v1/document/upload",
+                    files={"file": (file_path.name, f_bin, "text/plain")},
+                    headers=auth_headers,
+                    timeout=30,
+                )
+                if up_resp.status_code in (200, 201):
+                    try:
                         res_data = up_resp.json()
                         documents = res_data.get("documents", [])
                         if documents:
-                            adds.append(documents[0].get("location"))
-                        print(f"      ✅ Uploaded {file_path.name} (multipart)")
-                    else:
-                        print(f"      ❌ Failed to upload {file_path.name}: HTTP {up_resp.status_code}")
+                            location = documents[0].get("location")
+                            if location:
+                                adds.append(location)
+                            print(f"      ✅ Uploaded {file_path.name}")
+                        else:
+                            print(f"      ✅ Uploaded {file_path.name} (no location returned)")
+                    except Exception:
+                        print(f"      ✅ Uploaded {file_path.name} (status {up_resp.status_code})")
+                else:
+                    print(f"      ❌ Upload returned HTTP {up_resp.status_code}: {up_resp.text[:150]}")
         except Exception as exc:
             print(f"      ❌ Exception uploading {file_path.name}: {exc}")
+
+    if adds:
+        print(f"🧠 Indexing and embedding {len(adds)} documents into '{WORKSPACE}'...")
+        try:
+            update_resp = requests.post(
+                f"{BASE_URL}/api/v1/workspace/{WORKSPACE}/update-embeddings",
+                json={"adds": adds},
+                headers=HEADERS,
+                timeout=30,
+            )
+            if update_resp.status_code in (200, 201):
+                print("🎉 SUCCESS! Knowledge base successfully seeded and embedded!")
+            else:
+                print(f"ℹ️ Update embeddings response: HTTP {update_resp.status_code} - {update_resp.text[:150]}")
+        except Exception as exc:
+            print(f"⚠️ Embedding update error: {exc}")
 
     if adds:
         print(f"🧠 Indexing and embedding {len(adds)} documents into '{WORKSPACE}'...")
