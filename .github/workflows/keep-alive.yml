@@ -1,4 +1,4 @@
-name: Keep Render Backend Warm & Seeded
+name: Keep Render Backend Warm
 
 on:
   schedule:
@@ -10,19 +10,6 @@ jobs:
   keep-alive:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Codebase
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests python-dotenv
-
       - name: Ping Render Backend Health Endpoint
         run: |
           if [ -n "${{ secrets.BACKEND_PING_URL }}" ]; then
@@ -39,17 +26,4 @@ jobs:
             curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ secrets.ANYTHINGLLM_PING_URL }}" || true
           else
             echo "No ANYTHINGLLM_PING_URL secret configured. Skipping ping."
-          fi
-
-      - name: Ensure AnythingLLM Knowledge Base is Seeded
-        env:
-          ANYTHINGLLM_BASE_URL: ${{ secrets.ANYTHINGLLM_BASE_URL }}
-          ANYTHINGLLM_API_KEY: ${{ secrets.ANYTHINGLLM_API_KEY }}
-          ANYTHINGLLM_WORKSPACE: "apprentice-kb"
-        run: |
-          if [ -n "$ANYTHINGLLM_BASE_URL" ] && [ -n "$ANYTHINGLLM_API_KEY" ]; then
-            echo "Checking & Seeding AnythingLLM Knowledge Base..."
-            python scripts/seed_rag.py || true
-          else
-            echo "No ANYTHINGLLM secrets configured. Skipping auto-seeding."
           fi
