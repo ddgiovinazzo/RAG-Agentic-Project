@@ -34,7 +34,7 @@ class Config:
         o.strip()
         for o in os.environ.get(
             "ALLOWED_ORIGINS",
-            "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,https://rag-agentic-project.ddgiovinazzo.com,*"
+            "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
         ).split(",")
         if o.strip()
     ]
