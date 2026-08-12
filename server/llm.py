@@ -19,6 +19,45 @@ def _endpoint_and_headers():
     return f"{base}/chat/completions", headers
 
 
+def _parse_fallback_tool_call(text):
+    """
+    Provider-agnostic tool call recovery parser.
+    Parses raw function call tags (e.g. <function=name{args}>) or stringified tool JSON
+    emitted by local Ollama models, open-source LLMs, or API proxies.
+    """
+    if not text:
+        return None
+    import re
+    match = re.search(r"<function=(\w+)\s*(\{.*?\})", text, re.DOTALL)
+    if not match:
+        return None
+
+    t_name = match.group(1)
+    t_args_raw = match.group(2).replace('\\"', '"').replace('\\\\', '\\')
+    try:
+        t_args = json.loads(t_args_raw)
+        if isinstance(t_args, dict):
+            for k, v in list(t_args.items()):
+                if isinstance(v, str) and "{" in v:
+                    try:
+                        parsed_v = json.loads(v)
+                        if isinstance(parsed_v, dict):
+                            t_args = parsed_v
+                            break
+                    except Exception:
+                        pass
+    except Exception:
+        t_args = {"query": t_args_raw}
+
+    return {
+        "type": "tool_call",
+        "name": t_name,
+        "arguments": t_args,
+        "call_id": "call_fallback_rescued",
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+    }
+
+
 def generate(messages, tools):
     """One model call. Returns {"type": "final", "content": str} or
     {"type": "tool_call", "name": str, "arguments": dict, "call_id": str}."""
@@ -31,37 +70,10 @@ def generate(messages, tools):
         resp.raise_for_status()
     except requests.RequestException as exc:
         if getattr(exc, "response", None) is not None and exc.response.text:
-            err_text = exc.response.text
-            # Rescue Groq tool_use_failed errors containing failed_generation <function=name{args}</function>
-            if "tool_use_failed" in err_text and "failed_generation" in err_text:
-                import re
-                match = re.search(r"<function=(\w+)\s*(\{.*?\})", err_text, re.DOTALL)
-                if match:
-                    t_name = match.group(1)
-                    t_args_raw = match.group(2).replace('\\"', '"').replace('\\\\', '\\')
-                    try:
-                        t_args = json.loads(t_args_raw)
-                        if isinstance(t_args, dict):
-                            for k, v in list(t_args.items()):
-                                if isinstance(v, str) and "{" in v:
-                                    try:
-                                        parsed_v = json.loads(v)
-                                        if isinstance(parsed_v, dict):
-                                            t_args = parsed_v
-                                            break
-                                    except Exception:
-                                        pass
-                    except Exception:
-                        t_args = {"query": t_args_raw}
-                    print(f"🔧 Rescued Groq tool_use_failed for tool '{t_name}' with args {t_args}")
-                    return {
-                        "type": "tool_call",
-                        "name": t_name,
-                        "arguments": t_args,
-                        "call_id": "call_groq_rescued",
-                        "usage": {"prompt_tokens": 0, "completion_tokens": 0},
-                    }
-            raise LLMError(f"model call failed: {exc} - {err_text}") from exc
+            fallback = _parse_fallback_tool_call(exc.response.text)
+            if fallback:
+                return fallback
+            raise LLMError(f"model call failed: {exc} - {exc.response.text}") from exc
         raise LLMError(f"model call failed: {exc}") from exc
 
     data = resp.json()
