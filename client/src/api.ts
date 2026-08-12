@@ -32,7 +32,8 @@ export function setOnUnauthorized(handler: (() => void) | null) {
   onUnauthorized = handler;
 }
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const env = (import.meta as unknown as { env?: Record<string, string> }).env;
+const BASE_URL = env?.VITE_API_BASE_URL || "";
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
