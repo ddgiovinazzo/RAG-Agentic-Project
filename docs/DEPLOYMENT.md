@@ -55,13 +55,14 @@ npx cloudflared tunnel --url http://localhost:3001
 ```
 Copy the generated `https://<random-id>.trycloudflare.com` URL and set it as `ANYTHINGLLM_BASE_URL` on your backend.
 
-### Option B: Deploy AnythingLLM on Render (Docker Web Service)
+### Option B: Deploy AnythingLLM on Render (Docker Web Service with Persistent Storage)
 1. Deploy `mintplexlabs/anythingllm` as a Web Service on Render.
-2. Set Environment Variable `PORT=3001` (this exposes the AnythingLLM web UI at `https://anythingllm-service.onrender.com`).
-3. Set Environment Variable `STORAGE_DIR=/app/server/storage`.
-4. Open `https://anythingllm-service.onrender.com` in your browser.
-5. Go to **Settings → API Keys → Generate Key**, copy the generated key, and set it as `ANYTHINGLLM_API_KEY` on your `RAG-Agentic-Project` backend.
-6. Run `.venv/bin/python3 scripts/seed_rag.py` to seed and embed the knowledge base files.
+2. Attach a **Persistent Disk** on Render mounted at `/app/server/storage` (1 GB+).
+3. Set Environment Variable `PORT=3001` (this exposes the AnythingLLM web UI at `https://anythingllm-service.onrender.com`).
+4. Set Environment Variable `STORAGE_DIR=/app/server/storage`.
+5. Open `https://anythingllm-service.onrender.com` in your browser.
+6. Go to **Settings → API Keys → Generate Key**, copy the generated key, and set it as `ANYTHINGLLM_API_KEY` on your `RAG-Agentic-Project` backend.
+7. Run `.venv/bin/python3 scripts/seed_rag.py` once to seed and embed the knowledge base files. Because persistent storage is attached, documents, embeddings, and API keys are saved permanently across container restarts!
 
 ---
 
