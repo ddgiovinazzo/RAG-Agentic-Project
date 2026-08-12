@@ -115,12 +115,16 @@ flowchart TD
 
 ---
 
-## 🛡️ AI Safety & Prompt Injection Protection
+## 🛡️ AI Safety & Anti-Abuse Protection
 
 | Defense Mechanism | Implementation Strategy |
 | :--- | :--- |
 | **Data/Instruction Boundary** | Tool responses are wrapped inside `<tool_result>` XML tags. System prompts instruct the LLM to treat content within these boundaries purely as untrusted data. |
-| **Bounded Step Limit** | Enforces `MAX_AGENT_STEPS` (default: 6) to prevent infinite loops, hallucinated recursion, or API cost overruns. |
+| **In-Memory Rate Limiting** | Custom sliding-window limiter (`server/limiter.py`) throttles agent executions (5/min per IP/user) and auth endpoints (10/min) returning `429 Too Many Requests`. |
+| **CORS Origin Whitelisting** | Flask CORS is locked down to explicit frontend domains (`ALLOWED_ORIGINS`) to reject unauthorized cross-origin requests. |
+| **Prompt Length Bounds** | Enforces a strict prompt character cap (`MAX_PROMPT_LENGTH = 1000` chars) to block payload spam and resource denial of service. |
+| **Read-Only RAG Ingestion** | AnythingLLM developer API key is isolated on the backend. Public users can only issue read-only searches (`mode: "query"`); document upload/embedding endpoints are isolated. |
+| **Bounded Step Limit** | Enforces `MAX_AGENT_STEPS` (default: 5-6) to prevent infinite loops, hallucinated recursion, or API cost overruns. |
 | **Tool Timeout Safety** | Tool invocations execute with explicit timeout limits (`TOOL_TIMEOUT_SECONDS`). |
 | **Scoped Auth Permissions** | Multi-tenant user session authentication; users can only access their own conversations, runs, and tickets. |
 
@@ -130,12 +134,26 @@ flowchart TD
 
 | Layer | Technology | Primary Role |
 | :--- | :--- | :--- |
-| **Frontend** | React 18, TypeScript, Vite, TailwindCSS | Chat UI, real-time agent trace visualization, audit dashboard |
-| **Backend** | Python 3.11+, Flask, SQLAlchemy | Agent reasoning loop, tool router, state management, REST endpoints |
+| **Frontend** | React 18, TypeScript, Vite, TailwindCSS | Chat UI, real-time agent trace visualization, audit dashboard (Hosted on Vercel) |
+| **Backend** | Python 3.11+, Flask, Gunicorn, SQLAlchemy | Agent reasoning loop, rate limiter, tool router, state management, REST endpoints (Hosted on Render) |
 | **Database** | PostgreSQL 16 / SQLite | Persistence for users, sessions, runs, observability steps, and tickets |
-| **LLM Provider** | Ollama (`llama3.1:8b`) / OpenAI API | Tool-calling reasoning engine (swappable via `llm.py` adapter) |
-| **Knowledge Service** | AnythingLLM (Docker) | Vector index, document retrieval & RAG API service |
-| **Testing & CI** | Pytest, Vitest, GitHub Actions | Automated unit/integration testing on every PR |
+| **LLM Engine** | Groq API (`llama-3.3-70b-versatile`) / Ollama (`llama3.1:8b`) | High-speed tool-calling reasoning engine (swappable via `llm.py` adapter) |
+| **Knowledge Service** | AnythingLLM (Docker / HF Spaces / Tunnel) | Vector index, document retrieval & RAG API service |
+| **Testing & CI/CD** | Pytest, Vitest, GitHub Actions | Automated test suite & automated production deployment to Vercel/Render |
+
+---
+
+## 🌐 Free Cloud Deployment & Automated CD
+
+The application is fully configured for **zero-cost live public hosting** with built-in security protections and automated deployment:
+
+- **Frontend:** Hosted on **Vercel** (`client/vercel.json` SPA rewrite rules).
+- **Backend:** Hosted on **Render Free Web Service** (`render.yaml` blueprint with Gunicorn).
+- **LLM Provider:** **Groq API** (`llama-3.3-70b-versatile`) for sub-second tool-calling inference.
+- **RAG Knowledge Base:** **AnythingLLM** running via Cloudflare Tunnel or Hugging Face Spaces (16GB free RAM).
+- **Automated Production CD Pipeline:** Push to `main` triggers GitHub Actions (`.github/workflows/deploy.yml`) to run `pytest` and `vitest` quality gates, then auto-deploys frontend & backend to Vercel & Render.
+
+> 📖 **Full Deployment & Security Setup Instructions:** See **[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)** for step-by-step instructions.
 
 ---
 
