@@ -30,6 +30,7 @@ class FakeResponse:
     def __init__(self, payload, status=200):
         self._payload = payload
         self.status_code = status
+        self.text = str(payload)
 
     def json(self):
         return self._payload
