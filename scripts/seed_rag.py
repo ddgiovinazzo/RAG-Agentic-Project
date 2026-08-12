@@ -100,43 +100,24 @@ def seed_documents():
                     try:
                         res_data = up_resp.json()
                         documents = res_data.get("documents", [])
-                        if documents:
-                            location = documents[0].get("location")
-                            if location:
-                                adds.append(location)
-                            print(f"      ✅ Uploaded {file_path.name}")
+                        loc = None
+                        if isinstance(documents, list) and documents:
+                            loc = documents[0].get("location") if isinstance(documents[0], dict) else str(documents[0])
+                        elif isinstance(documents, dict):
+                            loc = documents.get("location")
+                        if not loc and "location" in res_data:
+                            loc = res_data["location"]
+                        if loc:
+                            adds.append(loc)
+                            print(f"      ✅ Uploaded {file_path.name} (location: {loc})")
                         else:
-                            print(f"      ✅ Uploaded {file_path.name} (no location returned)")
+                            print(f"      ✅ Uploaded {file_path.name} (raw: {res_data})")
                     except Exception:
                         print(f"      ✅ Uploaded {file_path.name} (status {up_resp.status_code})")
                 else:
                     print(f"      ❌ Upload returned HTTP {up_resp.status_code}: {up_resp.text[:150]}")
         except Exception as exc:
             print(f"      ❌ Exception uploading {file_path.name}: {exc}")
-
-    # Fetch all document locations from AnythingLLM
-    print(f"🧠 Fetching uploaded document locations for '{WORKSPACE}'...")
-    try:
-        doc_resp = requests.get(f"{BASE_URL}/api/v1/documents", headers=HEADERS, timeout=10)
-        if doc_resp.status_code == 200:
-            doc_data = doc_resp.json()
-            local_files = doc_data.get("localFiles", {})
-            items = local_files.get("items", [])
-            for item in items:
-                name = item.get("name")
-                if name:
-                    for sub in item.get("items", []):
-                        sub_name = sub.get("name")
-                        if sub_name:
-                            adds.append(f"{name}/{sub_name}")
-            if not adds:
-                # Fallback: search for top-level locations
-                for item in items:
-                    loc = item.get("location") or item.get("name")
-                    if loc:
-                        adds.append(loc)
-    except Exception as exc:
-        print(f"ℹ️ Info fetching document list: {exc}")
 
     if adds:
         adds = list(set(adds))
@@ -155,7 +136,7 @@ def seed_documents():
         except Exception as exc:
             print(f"⚠️ Embedding update error: {exc}")
     else:
-        print("⚠️ No document locations found to embed.")
+        print("⚠️ No document locations were extracted from upload responses.")
 
 if __name__ == "__main__":
     print("=" * 60)
