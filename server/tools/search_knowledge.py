@@ -22,7 +22,8 @@ def search_knowledge(query):
     except requests.RequestException as exc:
         return {"error": f"knowledge service unreachable: {exc}"}
     if resp.status_code != 200:
-        return {"error": f"knowledge service returned HTTP {resp.status_code}: {resp.text[:200]}"}
+        key_len = len(cfg.get("ANYTHINGLLM_API_KEY") or "")
+        return {"error": f"knowledge service returned HTTP {resp.status_code} (key len {key_len}): {resp.text[:200]}"}
     data = resp.json()
     sources = [s.get("title") or s.get("url") or "unknown" for s in data.get("sources", [])]
     return {"answer": data.get("textResponse", ""), "sources": sources}
