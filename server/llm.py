@@ -27,6 +27,8 @@ def _parse_fallback_tool_call(text):
     """
     if not text:
         return None
+    # Unescape unicode HTML escapes if present (\u003c -> <, \u003e -> >)
+    text = text.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\u0022", '"')
     import re
     match = re.search(r"<function=(\w+)\s*(\{.*?\})", text, re.DOTALL)
     if not match:
