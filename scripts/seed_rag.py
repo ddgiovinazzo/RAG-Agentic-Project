@@ -14,9 +14,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.environ.get("ANYTHINGLLM_BASE_URL", "https://anythingllm-service.onrender.com").rstrip("/")
+BASE_URL = os.environ.get("ANYTHINGLLM_BASE_URL", "http://localhost:3001").rstrip("/")
 API_KEY = os.environ.get("ANYTHINGLLM_API_KEY", "")
 WORKSPACE = os.environ.get("ANYTHINGLLM_WORKSPACE", "apprentice-kb")
+
+if not BASE_URL:
+    print("❌ Error: ANYTHINGLLM_BASE_URL is not set in environment or .env file.")
+    sys.exit(1)
 
 if not API_KEY:
     print("❌ Error: ANYTHINGLLM_API_KEY is not set in environment or .env file.")
