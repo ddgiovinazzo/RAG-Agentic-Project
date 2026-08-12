@@ -1,6 +1,7 @@
 # Enterprise Support Triage Agent & RAG Knowledge Service
 
 [![CI Build](https://img.shields.io/github/actions/workflow/status/freeleons/RAG-Agentic-Project/ci.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/freeleons/RAG-Agentic-Project/actions)
+[![Deployment Guide](https://img.shields.io/badge/Deployment-Free_Cloud_Hosting-orange?style=for-the-badge&logo=render)](./docs/DEPLOYMENT.md)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue?style=for-the-badge&logo=python)](https://python.org)
 [![Flask](https://img.shields.io/badge/Backend-Flask-000000?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
 [![React](https://img.shields.io/badge/Frontend-React_18_--_Vite-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
@@ -16,8 +17,10 @@
 <!-- PLACEHOLDER: 60-Second Video Demo / GIF -->
 <!-- Recommend placing a 60-second video demo or GIF here showing the live agent loop, step trace panel, and HITL confirmation modal -->
 > [!NOTE]
-> **Live Interactive Demo:** [https://agent-demo.example.com](https://agent-demo.example.com)  *(Replace with live deployment link)*
-> **1-Minute Loom Walkthrough:** [Watch Video Demo](https://loom.com/share/placeholder)
+> **Live Interactive Demo:** [https://agent-demo.example.com](https://agent-demo.example.com)  *(Replace with live deployment link)*  
+> **1-Minute Loom Walkthrough:** [Watch Video Demo](https://loom.com/share/placeholder)  
+> 📖 **Free Deployment & Security Guide:** **[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)** (Step-by-step instructions for hosting on Vercel + Render + Groq)
+
 
 ### 📸 UI Screenshots
 
