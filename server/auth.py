@@ -5,6 +5,7 @@ import jwt
 from flask import Blueprint, current_app, g, jsonify, request
 from flask_bcrypt import Bcrypt
 
+from server.limiter import rate_limit
 from server.models import User, db
 
 bcrypt = Bcrypt()
@@ -12,6 +13,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 @auth_bp.post("/register")
+@rate_limit(limit=10, period=60)
 def register():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
@@ -30,6 +32,7 @@ def register():
 
 
 @auth_bp.post("/login")
+@rate_limit(limit=10, period=60)
 def login():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
@@ -55,19 +58,26 @@ def login():
     )
 
 
+def decode_token(token):
+    try:
+        payload = jwt.decode(
+            token,
+            current_app.config["SECRET_KEY"],
+            algorithms=["HS256"],
+        )
+        return payload
+    except Exception:
+        return None
+
+
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         header = request.headers.get("Authorization", "")
         if not header.startswith("Bearer "):
             return jsonify({"error": "missing bearer token"}), 401
-        try:
-            payload = jwt.decode(
-                header[len("Bearer ") :],
-                current_app.config["SECRET_KEY"],
-                algorithms=["HS256"],
-            )
-        except jwt.InvalidTokenError:
+        payload = decode_token(header[len("Bearer ") :])
+        if not payload or "sub" not in payload:
             return jsonify({"error": "invalid or expired token"}), 401
         user = db.session.get(User, int(payload["sub"]))
         if user is None:

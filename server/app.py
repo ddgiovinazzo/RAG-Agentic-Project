@@ -11,7 +11,7 @@ def create_app(test_config=None):
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
-    CORS(app)
+    CORS(app, origins=app.config.get("ALLOWED_ORIGINS", "*"))
     db.init_app(app)
     Migrate(app, db)
     from server.auth import auth_bp, bcrypt

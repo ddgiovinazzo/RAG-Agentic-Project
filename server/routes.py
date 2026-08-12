@@ -315,8 +315,12 @@ def get_conversation_messages(conv_id):
     )
 
 
+from server.limiter import rate_limit
+
+
 @api_bp.post("/conversations/<int:conv_id>/messages")
 @require_auth
+@rate_limit(limit=5, period=60)
 def send_message(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
     if conv is None:
@@ -326,6 +330,10 @@ def send_message(conv_id):
     goal = ((request.get_json(silent=True) or {}).get("content") or "").strip()
     if not goal:
         return jsonify({"error": "content is required"}), 400
+
+    max_len = current_app.config.get("MAX_PROMPT_LENGTH", 1000)
+    if len(goal) > max_len:
+        return jsonify({"error": f"content exceeds maximum allowed length of {max_len} characters"}), 400
 
     if conv.title in ("New conversation", "", None):
         try:
