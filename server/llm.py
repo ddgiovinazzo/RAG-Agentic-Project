@@ -30,7 +30,10 @@ def generate(messages, tools):
         resp = requests.post(url, json=payload, headers=headers, timeout=120)
         resp.raise_for_status()
     except requests.RequestException as exc:
-        raise LLMError(f"model call failed: {exc}") from exc
+        err_msg = str(exc)
+        if getattr(exc, "response", None) is not None and exc.response.text:
+            err_msg += f" - {exc.response.text}"
+        raise LLMError(f"model call failed: {err_msg}") from exc
 
     data = resp.json()
     message = data["choices"][0]["message"]
