@@ -30,7 +30,7 @@ def _parse_fallback_tool_call(text):
     # Unescape unicode HTML escapes if present (\u003c -> <, \u003e -> >)
     text = text.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\u0022", '"')
     import re
-    match = re.search(r"<function=(\w+)\s*(\{.*?\})", text, re.DOTALL)
+    match = re.search(r"<function=(\w+)\s*\(?\s*(\{.*?\})\s*\)?", text, re.DOTALL)
     if not match:
         return None
 
