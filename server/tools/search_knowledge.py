@@ -24,6 +24,10 @@ def search_knowledge(query):
     if resp.status_code != 200:
         key_len = len(cfg.get("ANYTHINGLLM_API_KEY") or "")
         return {"error": f"knowledge service returned HTTP {resp.status_code} (key len {key_len}): {resp.text[:200]}"}
-    data = resp.json()
-    sources = [s.get("title") or s.get("url") or "unknown" for s in data.get("sources", [])]
-    return {"answer": data.get("textResponse", ""), "sources": sources}
+    try:
+        data = resp.json()
+        sources = [s.get("title") or s.get("url") or "unknown" for s in data.get("sources", [])]
+        answer = data.get("textResponse") or data.get("message") or data.get("response") or str(data)
+        return {"answer": answer, "sources": sources}
+    except Exception:
+        return {"answer": resp.text, "sources": []}
