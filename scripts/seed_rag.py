@@ -114,8 +114,33 @@ def seed_documents():
         except Exception as exc:
             print(f"      ❌ Exception uploading {file_path.name}: {exc}")
 
+    # Fetch all document locations from AnythingLLM
+    print(f"🧠 Fetching uploaded document locations for '{WORKSPACE}'...")
+    try:
+        doc_resp = requests.get(f"{BASE_URL}/api/v1/documents", headers=HEADERS, timeout=10)
+        if doc_resp.status_code == 200:
+            doc_data = doc_resp.json()
+            local_files = doc_data.get("localFiles", {})
+            items = local_files.get("items", [])
+            for item in items:
+                name = item.get("name")
+                if name:
+                    for sub in item.get("items", []):
+                        sub_name = sub.get("name")
+                        if sub_name:
+                            adds.append(f"{name}/{sub_name}")
+            if not adds:
+                # Fallback: search for top-level locations
+                for item in items:
+                    loc = item.get("location") or item.get("name")
+                    if loc:
+                        adds.append(loc)
+    except Exception as exc:
+        print(f"ℹ️ Info fetching document list: {exc}")
+
     if adds:
-        print(f"🧠 Indexing and embedding {len(adds)} documents into '{WORKSPACE}'...")
+        adds = list(set(adds))
+        print(f"🧠 Indexing and embedding {len(adds)} document(s) into '{WORKSPACE}'...")
         try:
             update_resp = requests.post(
                 f"{BASE_URL}/api/v1/workspace/{WORKSPACE}/update-embeddings",
@@ -129,22 +154,8 @@ def seed_documents():
                 print(f"ℹ️ Update embeddings response: HTTP {update_resp.status_code} - {update_resp.text[:150]}")
         except Exception as exc:
             print(f"⚠️ Embedding update error: {exc}")
-
-    if adds:
-        print(f"🧠 Indexing and embedding {len(adds)} documents into '{WORKSPACE}'...")
-        try:
-            update_resp = requests.post(
-                f"{BASE_URL}/api/v1/workspace/{WORKSPACE}/update-embeddings",
-                json={"adds": adds},
-                headers=HEADERS,
-                timeout=30,
-            )
-            if update_resp.status_code in (200, 201):
-                print("🎉 SUCCESS! Knowledge base successfully seeded and embedded!")
-            else:
-                print(f"ℹ️ Update embeddings response: HTTP {update_resp.status_code}")
-        except Exception as exc:
-            print(f"⚠️ Embedding update error: {exc}")
+    else:
+        print("⚠️ No document locations found to embed.")
 
 if __name__ == "__main__":
     print("=" * 60)
