@@ -320,7 +320,7 @@ from server.limiter import rate_limit
 
 @api_bp.post("/conversations/<int:conv_id>/messages")
 @require_auth
-@rate_limit(limit=5, period=60)
+@rate_limit(limit=5, period=60, min_spacing=3)
 def send_message(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=g.user.id).first()
     if conv is None:
