@@ -45,8 +45,8 @@ def create_app(test_config=None):
             pass
 
 
+    @app.get("/health")
     @app.get("/api/health")
-
     def health():
         return {"status": "ok"}
 
