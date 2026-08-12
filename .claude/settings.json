@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm:*)"
+    ],
+    "ask": [
+      "Bash(pip:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ],
+    "allow": [
+      "Read(**)",
+      "Grep(**)",
+      "Glob(**)",
+      "Bash(uv:*)",
+      "Bash(pytest:*)",
+      "Bash(python:* -c *)"
+    ]
+  },
+  "defaultMode": "plan"
+}

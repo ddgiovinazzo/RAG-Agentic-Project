@@ -36,6 +36,7 @@ class FakeResponse:
 
 
 def test_search_knowledge_parses_answer_and_sources(app, monkeypatch):
+    monkeypatch.setitem(app.config, "ANYTHINGLLM_WORKSPACE", "apprentice-kb")
     payload = {
         "textResponse": "Nimbus Pro costs $8/mo.",
         "sources": [{"title": "nimbus-faq.txt"}, {"url": "http://kb/doc2"}],
