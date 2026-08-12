@@ -12,5 +12,9 @@ jobs:
     steps:
       - name: Ping Render Backend Health Endpoint
         run: |
-          echo "Pinging backend at $(date)..."
-          curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://rag-agentic-backend.onrender.com/api/health || true
+          if [ -n "${{ secrets.BACKEND_PING_URL }}" ]; then
+            echo "Pinging backend at $(date)..."
+            curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ secrets.BACKEND_PING_URL }}" || true
+          else
+            echo "No BACKEND_PING_URL secret configured. Skipping ping."
+          fi
