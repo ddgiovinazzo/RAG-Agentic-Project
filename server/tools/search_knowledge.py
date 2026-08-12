@@ -23,16 +23,15 @@ def search_knowledge(query):
             headers=headers,
             timeout=cfg["TOOL_TIMEOUT_SECONDS"],
         )
-        if resp.status_code == 200 and resp.text.strip() != "OK":
+        if resp.status_code == 200 and resp.text.strip() != "OK" and not resp.text.strip().startswith("<"):
             try:
                 data = resp.json()
                 sources = [s.get("title") or s.get("url") or "unknown" for s in data.get("sources", [])]
-                answer = data.get("textResponse") or data.get("message") or data.get("response") or str(data)
-                if answer and answer.strip() != "OK":
+                answer = data.get("textResponse") or data.get("message") or data.get("response")
+                if answer and isinstance(answer, str) and answer.strip() != "OK" and not answer.strip().startswith("<"):
                     return {"answer": answer, "sources": sources}
             except Exception:
-                if resp.text and resp.text.strip() != "OK":
-                    return {"answer": resp.text, "sources": []}
+                pass
         elif resp.status_code != 200:
             last_error = f"knowledge service returned HTTP {resp.status_code}: {resp.text[:200]}"
     except requests.RequestException as exc:
@@ -47,16 +46,17 @@ def search_knowledge(query):
             headers=headers,
             timeout=cfg["TOOL_TIMEOUT_SECONDS"],
         )
-        if resp.status_code == 200:
+        if resp.status_code == 200 and not resp.text.strip().startswith("<"):
             try:
                 data = resp.json()
                 sources = [s.get("title") or s.get("url") or "unknown" for s in data.get("sources", [])]
                 chunks = data.get("chunks", []) or data.get("documents", [])
                 text_chunks = [c.get("text") or c.get("content") or str(c) for c in chunks if isinstance(c, dict)]
-                answer = "\n".join(text_chunks) if text_chunks else data.get("textResponse", str(data))
-                return {"answer": answer, "sources": sources}
+                answer = "\n".join(text_chunks) if text_chunks else data.get("textResponse")
+                if answer and isinstance(answer, str) and not answer.strip().startswith("<"):
+                    return {"answer": answer, "sources": sources}
             except Exception:
-                return {"answer": resp.text, "sources": []}
+                pass
         elif resp.status_code != 200:
             last_error = f"knowledge service returned HTTP {resp.status_code}: {resp.text[:200]}"
     except requests.RequestException as exc:
