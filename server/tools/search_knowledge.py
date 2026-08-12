@@ -13,7 +13,10 @@ def search_knowledge(query):
         resp = requests.post(
             url,
             json={"message": query, "mode": "query"},
-            headers={"Authorization": f"Bearer {cfg['ANYTHINGLLM_API_KEY']}"},
+            headers={
+                "Authorization": f"Bearer {cfg['ANYTHINGLLM_API_KEY']}",
+                "X-Api-Key": cfg["ANYTHINGLLM_API_KEY"],
+            },
             timeout=cfg["TOOL_TIMEOUT_SECONDS"],
         )
     except requests.RequestException as exc:
