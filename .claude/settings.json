@@ -19,6 +19,3 @@
   },
   "defaultMode": "plan"
 }
-    "deny": [
-      "Bash(rm:*)"
-    ],
