@@ -183,6 +183,26 @@ def test_generate_rescues_groq_parentheses_tool_use_failed(app, monkeypatch):
     assert result["arguments"] == {"query": "company remote work policy"}
 
 
+def test_generate_rescues_groq_comma_tool_use_failed(app, monkeypatch):
+    raw_groq_err = '{"error":{"message":"tool call validation failed: attempted to call tool \'search_knowledge,{\\"query\\": \\"remote work guidelines\\"}\' which was not in request.tools","type":"invalid_request_error","code":"tool_use_failed","failed_generation":"\\u003cfunction=search_knowledge,{\\"query\\": \\"remote work guidelines\\"}\\u003e\\u003c/function\\u003e"}}\n'
+
+    class Groq400CommaResponse:
+        status_code = 400
+        text = raw_groq_err
+        def raise_for_status(self):
+            exc = requests.HTTPError("400 Client Error")
+            exc.response = self
+            raise exc
+
+    monkeypatch.setattr("server.llm.requests.post", lambda *a, **k: Groq400CommaResponse())
+    from server.llm import generate
+
+    result = generate([{"role": "user", "content": "x"}], [])
+    assert result["type"] == "tool_call"
+    assert result["name"] == "search_knowledge"
+    assert result["arguments"] == {"query": "remote work guidelines"}
+
+
 def test_generate_parses_usage(app, monkeypatch):
     payload = {
         "choices": [{"message": {"content": "hi"}}],
