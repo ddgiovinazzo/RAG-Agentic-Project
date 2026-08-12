@@ -107,13 +107,14 @@ def seed_documents():
                             loc = documents.get("location")
                         if not loc and "location" in res_data:
                             loc = res_data["location"]
-                        if loc:
-                            adds.append(loc)
-                            print(f"      ✅ Uploaded {file_path.name} (location: {loc})")
-                        else:
-                            print(f"      ✅ Uploaded {file_path.name} (raw: {res_data})")
-                    except Exception:
-                        print(f"      ✅ Uploaded {file_path.name} (status {up_resp.status_code})")
+                        if not loc:
+                            loc = f"custom-documents/{file_path.name}"
+                        adds.append(loc)
+                        print(f"      ✅ Uploaded {file_path.name} (location: {loc})")
+                    except Exception as parse_exc:
+                        loc = f"custom-documents/{file_path.name}"
+                        adds.append(loc)
+                        print(f"      ✅ Uploaded {file_path.name} (fallback location: {loc}, body: {up_resp.text[:150]})")
                 else:
                     print(f"      ❌ Upload returned HTTP {up_resp.status_code}: {up_resp.text[:150]}")
         except Exception as exc:
