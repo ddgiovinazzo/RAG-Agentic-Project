@@ -32,7 +32,10 @@ class Config:
     # Security & Anti-Abuse Controls
     ALLOWED_ORIGINS = [
         o.strip()
-        for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173").split(",")
+        for o in os.environ.get(
+            "ALLOWED_ORIGINS",
+            "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,https://rag-agentic-project.ddgiovinazzo.com,*"
+        ).split(",")
         if o.strip()
     ]
     RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per day;50 per hour")
