@@ -32,13 +32,16 @@ export function setOnUnauthorized(handler: (() => void) | null) {
   onUnauthorized = handler;
 }
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const resp = await fetch(path, { ...options, headers });
+  const url = BASE_URL ? `${BASE_URL.replace(/\/$/, "")}${path}` : path;
+  const resp = await fetch(url, { ...options, headers });
   let body: unknown = null;
   try {
     body = await resp.json();
