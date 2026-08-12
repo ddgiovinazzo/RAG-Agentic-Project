@@ -42,6 +42,7 @@ data/
 .DS_Store
 Thumbs.db
 *.swp
+notes/
 
 # Superpowers scratch workspaces (ledgers, briefs, mockups)
 .superpowers/
